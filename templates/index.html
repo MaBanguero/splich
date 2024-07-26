@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Cutter</title>
     <script>
-        function downloadAndCleanup(segment) {
+        function downloadSegment(segment) {
             var link = document.createElement('a');
             link.href = '/download/' + segment;
             link.download = segment;
@@ -14,11 +14,16 @@
             document.body.removeChild(link);
         }
 
-        function downloadAll(segments) {
+        function downloadAllSegments(segments) {
             segments.forEach(segment => {
-                downloadAndCleanup(segment);
+                downloadSegment(segment);
             });
         }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            var autoDownloadSegments = {{ segments|tojson }};
+            downloadAllSegments(autoDownloadSegments);
+        });
     </script>
 </head>
 <body>
@@ -34,13 +39,16 @@
         <button type="submit">Subir Video</button>
     </form>
 
-    {% if video %}
-        <h2>Video Segmentado</h2>
-        <a href="/download/{{ video }}">Descargar Video Segmentado</a>
-        <video controls>
-            <source src="{{ url_for('static', filename='uploads/' ~ video) }}" type="video/mp4">
-            Tu navegador no soporta la reproducción de videos.
-        </video>
+    {% if segments %}
+        <h2>Segmentos de Video</h2>
+        <ul id="segment-list">
+            {% for segment in segments %}
+                <li>
+                    {{ segment }}
+                    <a href="/download/{{ segment }}">Descargar Manualmente</a>
+                </li>
+            {% endfor %}
+        </ul>
     {% endif %}
 </body>
 </html>
