@@ -48,7 +48,7 @@ def index():
 def download(filename):
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(file_path):
-        return send_file(file_path, as_attachment=True, attachment_filename=filename)
+        return send_file(file_path, as_attachment=True, download_name=filename)
     else:
         abort(404)
 
