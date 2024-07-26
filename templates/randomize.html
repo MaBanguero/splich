@@ -1,26 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Randomize Video Cutter</title>
-</head>
-<body>
-    <h1>Sube tu video para cortarlo y unirlo de manera aleatoria</h1>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="video" accept="video/*" required><br><br>
-        <label for="duration">Duración del segmento (segundos):</label>
-        <input type="number" name="duration" id="duration" min="1" required><br><br>
-        <button type="submit">Subir Video</button>
-    </form>
+{% extends "base.html" %}
 
-    {% if video %}
-        <h2>Video Mezclado</h2>
-        <a href="/download/{{ video }}">Descargar Video Mezclado</a>
-        <video controls>
-            <source src="{{ url_for('static', filename='uploads/' ~ video) }}" type="video/mp4">
-            Tu navegador no soporta la reproducción de videos.
-        </video>
-    {% endif %}
-</body>
-</html>
+{% block content %}
+<h1>Sube tu video para cortarlo y unirlo de manera aleatoria</h1>
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="video" accept="video/*" required><br><br>
+    <label for="duration">Duración del segmento (segundos):</label>
+    <input type="number" name="duration" id="duration" min="1" required><br><br>
+    <button type="submit">Subir Video</button>
+</form>
+
+{% if video %}
+    <h2>Video Mezclado</h2>
+    <a href="/download/{{ video }}">Descargar Video Mezclado</a>
+    <video controls>
+        <source src="{{ url_for('static', filename='uploads/' ~ video) }}" type="video/mp4">
+        Tu navegador no soporta la reproducción de videos.
+    </video>
+{% endif %}
+{% endblock %}

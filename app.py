@@ -21,15 +21,13 @@ def cortar_video(input_video_path, duracion_segmento, inicio_path=None, final_pa
     for start_time in range(0, duracion_total, duracion_segmento):
         end_time = min(start_time + duracion_segmento, duracion_total)
         clip = video.subclip(start_time, end_time)
-        if inicio_clip and final_clip:
-            combined_clip = concatenate_videoclips([inicio_clip, clip, final_clip])
-        elif inicio_clip:
-            combined_clip = concatenate_videoclips([inicio_clip, clip])
-        elif final_clip:
-            combined_clip = concatenate_videoclips([clip, final_clip])
-        else:
-            combined_clip = clip
-        
+        clips = [clip]
+        if inicio_clip:
+            clips.insert(0, inicio_clip)
+        if final_clip:
+            clips.append(final_clip)
+        combined_clip = concatenate_videoclips(clips)
+
         output_filename = f"segmento_{start_time}_{end_time}.mp4"
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
         combined_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
@@ -55,8 +53,34 @@ def cortar_y_mezclar_video(input_video_path, duracion_segmento):
 
     return output_filename
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
+def agregar_inicio_final(input_video_paths, inicio_path=None, final_path=None):
+    videos_procesados = []
+
+    inicio_clip = VideoFileClip(inicio_path) if inicio_path else None
+    final_clip = VideoFileClip(final_path) if final_path else None
+
+    for input_video_path in input_video_paths:
+        video = VideoFileClip(input_video_path)
+        clips = [video]
+        if inicio_clip:
+            clips.insert(0, inicio_clip)
+        if final_clip:
+            clips.append(final_clip)
+        combined_clip = concatenate_videoclips(clips)
+
+        output_filename = f"procesado_{os.path.basename(input_video_path)}"
+        output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+        combined_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
+        videos_procesados.append(output_filename)
+
+    return videos_procesados
+
+@app.route('/')
+def home():
+    return render_template('home.html')
+
+@app.route('/segment', methods=['GET', 'POST'])
+def segment():
     if request.method == 'POST':
         if 'video' not in request.files or 'duration' not in request.form:
             return redirect(request.url)
@@ -84,9 +108,9 @@ def index():
             final_file.save(final_path)
 
         segments = cortar_video(filepath, duration, inicio_path, final_path)
-        return render_template('index.html', segments=segments)
+        return render_template('segment.html', segments=segments)
 
-    return render_template('index.html', segments=None)
+    return render_template('segment.html', segments=None)
 
 @app.route('/randomize', methods=['GET', 'POST'])
 def randomize():
@@ -107,6 +131,38 @@ def randomize():
         return render_template('randomize.html', video=mixed_video_filename)
 
     return render_template('randomize.html', video=None)
+
+@app.route('/process_multiple', methods=['GET', 'POST'])
+def process_multiple():
+    if request.method == 'POST':
+        video_files = request.files.getlist('videos')
+        inicio_file = request.files.get('inicio')
+        final_file = request.files.get('final')
+
+        if not video_files:
+            return redirect(request.url)
+
+        input_video_paths = []
+        for video_file in video_files:
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], video_file.filename)
+            video_file.save(filepath)
+            input_video_paths.append(filepath)
+
+        inicio_path = None
+        final_path = None
+
+        if inicio_file and inicio_file.filename != '':
+            inicio_path = os.path.join(app.config['UPLOAD_FOLDER'], inicio_file.filename)
+            inicio_file.save(inicio_path)
+
+        if final_file and final_file.filename != '':
+            final_path = os.path.join(app.config['UPLOAD_FOLDER'], final_file.filename)
+            final_file.save(final_path)
+
+        videos_procesados = agregar_inicio_final(input_video_paths, inicio_path, final_path)
+        return render_template('process_multiple.html', videos=videos_procesados)
+
+    return render_template('process_multiple.html', videos=None)
 
 @app.route('/download/<filename>')
 def download(filename):

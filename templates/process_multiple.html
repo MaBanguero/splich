@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Sube múltiples videos para agregar un inicio y final común</h1>
+<form method="post" enctype="multipart/form-data">
+    <label for="videos">Selecciona videos:</label>
+    <input type="file" name="videos" accept="video/*" multiple required><br><br>
+    <label for="inicio">Video de inicio (opcional):</label>
+    <input type="file" name="inicio" accept="video/*"><br><br>
+    <label for="final">Video de final (opcional):</label>
+    <input type="file" name="final" accept="video/*"><br><br>
+    <button type="submit">Subir Videos</button>
+</form>
+
+{% if videos %}
+    <h2>Videos Procesados</h2>
+    <ul id="video-list">
+        {% for video in videos %}
+            <li>
+                {{ video }}
+                <a href="/download/{{ video }}">Descargar</a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% endblock %}
