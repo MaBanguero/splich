@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, request, render_template, redirect, url_for, send_file, abort
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 import random
@@ -9,6 +10,19 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB max file size
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
+
+# Setup logging
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+file_handler = logging.FileHandler('logs/flask.log')
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+file_handler.setFormatter(formatter)
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.INFO)
+
+app.logger.info('Flask application starting up')
 
 def cortar_video(input_video_path, duracion_segmento, inicio_path=None, final_path=None):
     video = VideoFileClip(input_video_path)
@@ -77,6 +91,7 @@ def agregar_inicio_final(input_video_paths, inicio_path=None, final_path=None):
 
 @app.route('/')
 def home():
+    app.logger.info('Home page accessed')
     return render_template('home.html')
 
 @app.route('/segment', methods=['GET', 'POST'])
@@ -168,9 +183,11 @@ def process_multiple():
 def download(filename):
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(file_path):
+        app.logger.info(f'Download requested for {filename}')
         return send_file(file_path, as_attachment=True, download_name=filename)
     else:
+        app.logger.warning(f'File {filename} not found for download')
         abort(404)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000,debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
