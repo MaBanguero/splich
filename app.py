@@ -1,10 +1,10 @@
 import os
-from flask import Flask, request, render_template, redirect, url_for, send_file
+from flask import Flask, request, render_template, redirect, url_for, send_file, abort
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.editor import VideoFileClip
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/uploads/'
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB max file size
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -49,7 +49,8 @@ def download(filename):
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True, attachment_filename=filename)
-    return redirect(url_for('index'))
+    else:
+        abort(404)
 
 if __name__ == '__main__':
     app.run(debug=True)
