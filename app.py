@@ -44,13 +44,11 @@ def index():
 
     return render_template('index.html', segments=None)
 
-@app.route('/download_and_cleanup/<filename>')
-def download_and_cleanup(filename):
+@app.route('/download/<filename>')
+def download(filename):
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(file_path):
-        response = send_file(file_path, as_attachment=True, attachment_filename=filename)
-        response.call_on_close(lambda: os.remove(file_path))
-        return response
+        return send_file(file_path, as_attachment=True, attachment_filename=filename)
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
