@@ -30,6 +30,14 @@
         <button type="submit">Subir Video</button>
     </form>
 
+    <h1>O corta y une el video de manera aleatoria</h1>
+    <form action="/randomize" method="post" enctype="multipart/form-data">
+        <input type="file" name="video" accept="video/*" required>
+        <label for="duration">Duración del segmento (segundos):</label>
+        <input type="number" name="duration" id="duration" min="1" required>
+        <button type="submit">Subir Video</button>
+    </form>
+
     {% if segments %}
         <h2>Segmentos de Video</h2>
         <ul id="segment-list">
