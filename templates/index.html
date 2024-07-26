@@ -34,7 +34,10 @@
         <h2>Segmentos de Video</h2>
         <ul id="segment-list">
             {% for segment in segments %}
-                <li>{{ segment }}</li>
+                <li>
+                    {{ segment }}
+                    <a href="/download/{{ segment }}">Descargar Manualmente</a>
+                </li>
             {% endfor %}
         </ul>
         <script>
