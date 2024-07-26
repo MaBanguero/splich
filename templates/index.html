@@ -22,7 +22,9 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             var autoDownloadSegments = {{ segments|tojson }};
-            downloadAllSegments(autoDownloadSegments);
+            if (autoDownloadSegments) {
+                downloadAllSegments(autoDownloadSegments);
+            }
         });
     </script>
 </head>

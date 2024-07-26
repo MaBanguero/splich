@@ -21,13 +21,18 @@ def cortar_video(input_video_path, duracion_segmento, inicio_path=None, final_pa
     for start_time in range(0, duracion_total, duracion_segmento):
         end_time = min(start_time + duracion_segmento, duracion_total)
         clip = video.subclip(start_time, end_time)
-        if inicio_clip:
-            clip = concatenate_videoclips([inicio_clip, clip])
-        if final_clip:
-            clip = concatenate_videoclips([clip, final_clip])
+        if inicio_clip and final_clip:
+            combined_clip = concatenate_videoclips([inicio_clip, clip, final_clip])
+        elif inicio_clip:
+            combined_clip = concatenate_videoclips([inicio_clip, clip])
+        elif final_clip:
+            combined_clip = concatenate_videoclips([clip, final_clip])
+        else:
+            combined_clip = clip
+        
         output_filename = f"segmento_{start_time}_{end_time}.mp4"
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
-        clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
+        combined_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
         segments.append(output_filename)
 
     return segments
