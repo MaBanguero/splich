@@ -1,7 +1,8 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, send_file
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.editor import VideoFileClip
 import os
+import shutil
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads/'
@@ -41,6 +42,27 @@ def index():
     
     return render_template('index.html', segments=None)
 
+@app.route('/download/<filename>')
+def download(filename):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        return send_file(file_path, as_attachment=True, attachment_filename=filename)
+
+@app.route('/cleanup/<filename>')
+def cleanup(filename):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    return redirect(url_for('index'))
+
+@app.route('/download_and_cleanup/<filename>')
+def download_and_cleanup(filename):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        response = send_file(file_path, as_attachment=True, attachment_filename=filename)
+        response.call_on_close(lambda: os.remove(file_path))
+        return response
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True)
-

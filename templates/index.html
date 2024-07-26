@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Cutter</title>
+    <script>
+        function downloadAndCleanup(segment) {
+            var link = document.createElement('a');
+            link.href = '/download_and_cleanup/' + segment;
+            link.download = segment;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadAll(segments) {
+            segments.forEach(segment => {
+                downloadAndCleanup(segment);
+            });
+        }
+    </script>
 </head>
 <body>
     <h1>Sube tu video para cortarlo en segmentos</h1>
@@ -16,11 +32,19 @@
 
     {% if segments %}
         <h2>Segmentos de Video</h2>
-        <ul>
+        <ul id="segment-list">
             {% for segment in segments %}
-                <li><a href="{{ segment }}" target="_blank">{{ segment }}</a></li>
+                <li>{{ segment.split('/')[-1] }}</li>
             {% endfor %}
         </ul>
+        <script>
+            var segments = [
+                {% for segment in segments %}
+                    "{{ segment.split('/')[-1] }}",
+                {% endfor %}
+            ];
+            downloadAll(segments);
+        </script>
     {% endif %}
 </body>
 </html>
