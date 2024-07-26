@@ -2,7 +2,6 @@ import os
 from flask import Flask, request, render_template, redirect, url_for, send_file, abort
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.editor import VideoFileClip, concatenate_videoclips
-import random
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
@@ -11,19 +10,30 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB max file size
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
-def cortar_video(input_video_path, duracion_segmento):
+def cortar_video(input_video_path, duracion_segmento, inicio_path=None, final_path=None):
     video = VideoFileClip(input_video_path)
     duracion_total = int(video.duration)
-    segments = []
+    clips = []
+
+    if inicio_path:
+        inicio_clip = VideoFileClip(inicio_path)
+        clips.append(inicio_clip)
 
     for start_time in range(0, duracion_total, duracion_segmento):
         end_time = min(start_time + duracion_segmento, duracion_total)
-        output_filename = f"segmento_{start_time}_{end_time}.mp4"
-        output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
-        ffmpeg_extract_subclip(input_video_path, start_time, end_time, targetname=output_path)
-        segments.append(output_filename)
+        clip = video.subclip(start_time, end_time)
+        clips.append(clip)
 
-    return segments
+    if final_path:
+        final_clip = VideoFileClip(final_path)
+        clips.append(final_clip)
+
+    video_final = concatenate_videoclips(clips)
+    output_filename = "video_segmentado.mp4"
+    output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+    video_final.write_videofile(output_path, codec='libx264', audio_codec='aac')
+
+    return output_filename
 
 def cortar_y_mezclar_video(input_video_path, duracion_segmento):
     video = VideoFileClip(input_video_path)
@@ -50,18 +60,31 @@ def index():
             return redirect(request.url)
 
         file = request.files['video']
+        inicio_file = request.files.get('inicio')
+        final_file = request.files.get('final')
         duration = int(request.form['duration'])
 
         if file.filename == '' or duration <= 0:
             return redirect(request.url)
 
-        if file:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-            segments = cortar_video(filepath, duration)
-            return render_template('index.html', segments=segments)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(filepath)
 
-    return render_template('index.html', segments=None)
+        inicio_path = None
+        final_path = None
+
+        if inicio_file and inicio_file.filename != '':
+            inicio_path = os.path.join(app.config['UPLOAD_FOLDER'], inicio_file.filename)
+            inicio_file.save(inicio_path)
+
+        if final_file and final_file.filename != '':
+            final_path = os.path.join(app.config['UPLOAD_FOLDER'], final_file.filename)
+            final_file.save(final_path)
+
+        segmented_video_filename = cortar_video(filepath, duration, inicio_path, final_path)
+        return render_template('index.html', video=segmented_video_filename)
+
+    return render_template('index.html', video=None)
 
 @app.route('/randomize', methods=['GET', 'POST'])
 def randomize():
@@ -75,11 +98,11 @@ def randomize():
         if file.filename == '' or duration <= 0:
             return redirect(request.url)
 
-        if file:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-            mixed_video_filename = cortar_y_mezclar_video(filepath, duration)
-            return render_template('randomize.html', video=mixed_video_filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(filepath)
+
+        mixed_video_filename = cortar_y_mezclar_video(filepath, duration)
+        return render_template('randomize.html', video=mixed_video_filename)
 
     return render_template('randomize.html', video=None)
 
