@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Add Subtitles to Video</h1>
+<form action="/add_subtitles" method="post" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="video">Upload Video:</label>
+        <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
+    </div>
+    <div class="form-group">
+        <label for="audio">Upload New Audio:</label>
+        <input type="file" class="form-control" id="audio" name="audio" accept="audio/*" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Subtitles</button>
+</form>
+{% endblock %}

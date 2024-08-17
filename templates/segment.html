@@ -1,27 +1,23 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h1>Sube tu video para cortarlo en segmentos</h1>
-<form method="post" enctype="multipart/form-data">
-    <input type="file" name="video" accept="video/*" required><br><br>
-    <label for="duration">Duración del segmento (segundos):</label>
-    <input type="number" name="duration" id="duration" min="1" required><br><br>
-    <label for="inicio">Video de inicio (opcional):</label>
-    <input type="file" name="inicio" accept="video/*"><br><br>
-    <label for="final">Video de final (opcional):</label>
-    <input type="file" name="final" accept="video/*"><br><br>
-    <button type="submit">Subir Video</button>
+<h1>Segment Video</h1>
+<form action="{{ url_for('video.segment') }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="video" accept="video/*" required>
+    <input type="number" name="duration" placeholder="Segment Duration (seconds)" required>
+    <input type="submit" value="Upload and Segment">
 </form>
-
 {% if segments %}
-    <h2>Segmentos de Video</h2>
-    <ul id="segment-list">
+    <h2>Segments</h2>
+    <ul>
         {% for segment in segments %}
-            <li>
-                {{ segment }}
-                <a href="/download/{{ segment }}">Descargar Manualmente</a>
-            </li>
+            <li><a href="{{ url_for('video.download', folder='segments', filename=segment) }}">{{ segment }}</a></li>
         {% endfor %}
     </ul>
 {% endif %}
+<button id="downloadAllBtn">Download All</button>
+<script>
+document.getElementById('downloadAllBtn').addEventListener('click', function() {
+    window.location.href = '';
+});
+</script>
 {% endblock %}

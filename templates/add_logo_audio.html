@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Add Logo and Background Audio to Video</h1>
+<form method="post" enctype="multipart/form-data">
+    <div>
+        <label for="video">Video:</label>
+        <input type="file" name="video" id="video" required>
+    </div>
+    <div>
+        <label for="logo">Logo:</label>
+        <input type="file" name="logo" id="logo" required>
+    </div>
+    <div>
+        <label for="audio">Audio:</label>
+        <input type="file" name="audio" id="audio" required>
+    </div>
+    <button type="submit">Upload and Process</button>
+</form>
+
+{% if video %}
+<h2>Processed Video</h2>
+<video width="320" height="240" controls>
+    <source src="{{ url_for('static', filename='uploads/logo_audio/' ~ video) }}" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
+<a href="{{ url_for('download', filename='uploads/logo_audio/' ~ video) }}">Download</a>
+{% endif %}
+{% endblock %}
