@@ -57,7 +57,8 @@ class FacebookReelsUploader:
         try:
             response = requests.post(base_publish_reels_uri)
             response.raise_for_status()
-            return response.json()
+            print(response.json())
+            return response.get('success')
         except requests.exceptions.RequestException as e:
             print(f"Error publishing for Facebook Reels: {base_publish_reels_uri}, {e}")
             return None
