@@ -6,8 +6,7 @@ page_id = '438383526014976'
 video_title = '5 Cosas que no sabias'
 video_description = 'Dale like y comenta'
 
-# Crea una instancia del uploader
 uploader = FacebookReelsUploader(access_token, page_id)
+upload_thread = uploader.start_uploading_in_background(video_title, video_description)
+upload_thread.join()  # Espera a que el hilo termine antes de salir del programa
 
-# Inicia el proceso de subida en segundo plano
-uploader.start_uploading_in_background(video_title, video_description)
