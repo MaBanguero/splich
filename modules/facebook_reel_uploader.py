@@ -5,6 +5,7 @@ import threading
 import boto3
 from config import Config
 from moviepy.editor import VideoFileClip
+from moviepy.video.fx.all import resize
 
 s3 = boto3.client('s3')
 
@@ -20,12 +21,25 @@ class FacebookReelsUploader:
     def resize_video(self, input_path, output_path):
         try:
             with VideoFileClip(input_path) as video:
-                # Redimensiona el video a 1080x1920
-                video_resized = video.resize(height=1920)  # Ajustar la altura a 1920p
-                video_resized = video_resized.crop(x_center=video.w / 2, width=1080)  # Recorta para ajustar el ancho a 1080
+                if video.w < 540:
+                    print(f"Error: El ancho del video original ({video.w}px) es menor que el mínimo requerido (540px).")
+                    return False
+                
+                # Redimensionar el video a 1080x1920 o usar letterbox si es necesario
+                if video.h / video.w >= 1920 / 1080:
+                    video_resized = resize(video, height=1920)
+                else:
+                    video_resized = resize(video, width=1080)
+                
+                # Aplicar letterbox si es necesario para mantener la proporción 9:16
+                video_resized = video_resized.resize((1080, 1920))
+                
+                # Guardar el video redimensionado
                 video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
+                return True
         except Exception as e:
             print(f"Error al redimensionar el video: {input_path}. Detalles del error: {e}")
+            return False
 
 
     def start_upload(self):
