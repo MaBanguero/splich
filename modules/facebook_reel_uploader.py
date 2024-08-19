@@ -18,11 +18,15 @@ class FacebookReelsUploader:
         s3.download_file(Config.S3_BUCKET_NAME, s3_key, local_path)
 
     def resize_video(self, input_path, output_path):
-        with VideoFileClip(input_path) as video:
-            # Redimensiona el video a 1080x1920
-            video_resized = video.resize(height=1920)  # Ajustar la altura a 1920p
-            video_resized = video_resized.crop(x_center=video.w / 2, width=1080)  # Recorta para ajustar el ancho a 1080
-            video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
+        try:
+            with VideoFileClip(input_path) as video:
+                # Redimensiona el video a 1080x1920
+                video_resized = video.resize(height=1920)  # Ajustar la altura a 1920p
+                video_resized = video_resized.crop(x_center=video.w / 2, width=1080)  # Recorta para ajustar el ancho a 1080
+                video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
+        except Exception as e:
+            print(f"Error al redimensionar el video: {input_path}. Detalles del error: {e}")
+
 
     def start_upload(self):
         upload_start_url = f"https://graph.facebook.com/v20.0/{self.page_id}/video_reels"
@@ -101,6 +105,11 @@ class FacebookReelsUploader:
                 
                 # Redimensionar el video a 1080x1920
                 self.resize_video(local_path, resized_path)
+                
+                # Verificar que el archivo redimensionado existe
+                if not os.path.exists(resized_path):
+                    print(f"Error: el archivo redimensionado no se encontró en la ruta: {resized_path}")
+                    continue
                 
                 video_id, upload_url = self.start_upload()
                 if video_id and upload_url:
