@@ -118,7 +118,9 @@ class FacebookReelsUploader:
                 self.download_from_s3(s3_key, local_path)
                 
                 # Redimensionar el video a 1080x1920
-                self.resize_video(local_path, resized_path)
+                if not self.resize_video(local_path, resized_path):
+                    print(f"El video {video_filename} no pudo ser redimensionado correctamente.")
+                    continue
                 
                 # Verificar que el archivo redimensionado existe
                 if not os.path.exists(resized_path):
