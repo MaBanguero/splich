@@ -19,9 +19,9 @@ class FacebookReelsUploader:
 
     def resize_video(self, input_path, output_path):
         with VideoFileClip(input_path) as video:
-            # Redimensiona el video a 9:16
-            video_resized = video.resize(height=1080)  # Ajustar la altura a 1080p (proporción 9:16)
-            video_resized = video_resized.crop(x_center=video.w / 2, width=video.h * 9 / 16)  # Recorta para ajustar la proporción
+            # Redimensiona el video a 1080x1920
+            video_resized = video.resize(height=1920)  # Ajustar la altura a 1920p
+            video_resized = video_resized.crop(x_center=video.w / 2, width=1080)  # Recorta para ajustar el ancho a 1080
             video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
 
     def start_upload(self):
@@ -99,7 +99,7 @@ class FacebookReelsUploader:
                 # Descargar el video desde S3
                 self.download_from_s3(s3_key, local_path)
                 
-                # Redimensionar el video a 9:16
+                # Redimensionar el video a 1080x1920
                 self.resize_video(local_path, resized_path)
                 
                 video_id, upload_url = self.start_upload()
