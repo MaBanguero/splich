@@ -4,6 +4,7 @@ import time
 import threading
 import boto3
 from config import Config
+from moviepy.editor import VideoFileClip
 
 s3 = boto3.client('s3')
 
@@ -15,6 +16,13 @@ class FacebookReelsUploader:
 
     def download_from_s3(self, s3_key, local_path):
         s3.download_file(Config.S3_BUCKET_NAME, s3_key, local_path)
+
+    def resize_video(self, input_path, output_path):
+        with VideoFileClip(input_path) as video:
+            # Redimensiona el video a 9:16
+            video_resized = video.resize(height=1080)  # Ajustar la altura a 1080p (proporción 9:16)
+            video_resized = video_resized.crop(x_center=video.w / 2, width=video.h * 9 / 16)  # Recorta para ajustar la proporción
+            video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
 
     def start_upload(self):
         upload_start_url = f"https://graph.facebook.com/v20.0/{self.page_id}/video_reels"
@@ -86,14 +94,18 @@ class FacebookReelsUploader:
             for s3_key in batch_videos:
                 video_filename = os.path.basename(s3_key)
                 local_path = f"/tmp/{video_filename}"
+                resized_path = f"/tmp/resized_{video_filename}"
                 
                 # Descargar el video desde S3
                 self.download_from_s3(s3_key, local_path)
                 
+                # Redimensionar el video a 9:16
+                self.resize_video(local_path, resized_path)
+                
                 video_id, upload_url = self.start_upload()
                 if video_id and upload_url:
-                    file_size = os.path.getsize(local_path)
-                    if self.upload_binary(upload_url, local_path, file_size):
+                    file_size = os.path.getsize(resized_path)
+                    if self.upload_binary(upload_url, resized_path, file_size):
                         if self.finalize_upload(video_id, title, description):
                             print(f"Reel {video_filename} subido y publicado con éxito.")
                             self.log_uploaded_video(video_filename)
@@ -104,8 +116,9 @@ class FacebookReelsUploader:
                 else:
                     print(f"No se pudo iniciar la subida para {video_filename}.")
                 
-                # Eliminar el archivo local después de la subida
+                # Eliminar los archivos locales después de la subida
                 os.remove(local_path)
+                os.remove(resized_path)
 
             if i + batch_size < total_videos:
                 print(f"Esperando {wait_time/3600} horas antes de subir el siguiente lote de videos.")
