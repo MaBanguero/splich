@@ -20,13 +20,7 @@ def resize_video(input_path, output_path):
             if video.w < 540:
                 print(f"Error: El ancho del video original ({video.w}px) es menor que el mínimo requerido (540px).")
                 return False
-            
-            # Redimensionar el video a 1080x1920 o usar letterbox si es necesario
-            if video.h / video.w >= 1920 / 1080:
-                video_resized = resize(video, height=1920)
-            else:
-                video_resized = resize(video, width=1080)
-            
+                
             # Aplicar letterbox si es necesario para mantener la proporción 9:16
             video_resized = video_resized.resize((1080, 1920))
             
