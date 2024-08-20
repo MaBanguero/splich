@@ -31,8 +31,6 @@ class FacebookReelsUploader:
                 else:
                     video_resized = resize(video, width=1080)
                 
-                # Aplicar letterbox si es necesario para mantener la proporción 9:16
-                video_resized = video_resized.resize((1080, 1920))
                 
                 # Guardar el video redimensionado
                 video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
