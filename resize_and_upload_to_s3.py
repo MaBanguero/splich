@@ -1,6 +1,5 @@
 import os
 import boto3
-from datetime import datetime
 from moviepy.editor import VideoFileClip
 from moviepy.video.fx.all import resize
 from config import Config
@@ -37,9 +36,9 @@ def resize_video(input_path, output_path):
         print(f"Error al redimensionar el video: {input_path}. Detalles del error: {e}")
         return False
 
-def log_resized_video(original_filename):
+def log_resized_video(video_filename):
     with open(LOG_FILE, 'a') as log:
-        log.write(original_filename + '\n')
+        log.write(video_filename + '\n')
 
 def get_resized_videos():
     if not os.path.exists(LOG_FILE):
@@ -47,7 +46,7 @@ def get_resized_videos():
     with open(LOG_FILE, 'r') as log:
         return set(log.read().splitlines())
 
-def process_and_upload_videos_from_s3(s3_input_folder='segments', s3_output_folder='redimensionado', local_folder='/tmp'):
+def process_and_upload_videos_from_s3(s3_input_folder='segments', s3_output_folder='resized', local_folder='/tmp'):
     resized_videos = get_resized_videos()
     s3_objects = s3.list_objects_v2(Bucket=Config.S3_BUCKET_NAME, Prefix=s3_input_folder).get('Contents', [])
     video_files = [obj['Key'] for obj in s3_objects if obj['Key'].endswith('.mp4')]
@@ -61,10 +60,8 @@ def process_and_upload_videos_from_s3(s3_input_folder='segments', s3_output_fold
             continue
         
         local_input_path = os.path.join(local_folder, video_filename)
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        resized_filename = f"redimensionado-{timestamp}-{video_filename}"
-        local_output_path = os.path.join(local_folder, resized_filename)
-        resized_s3_key = f"{s3_output_folder}/{resized_filename}"
+        local_output_path = os.path.join(local_folder, video_filename)
+        resized_s3_key = f"{s3_output_folder}/{video_filename}"
         
         # Descargar el video desde S3
         try:
@@ -76,14 +73,14 @@ def process_and_upload_videos_from_s3(s3_input_folder='segments', s3_output_fold
         # Redimensionar el video
         if resize_video(local_input_path, local_output_path):
             try:
-                # Subir el video redimensionado a S3
+                # Subir el video redimensionado a S3 con el nombre original
                 upload_to_s3(local_output_path, resized_s3_key)
                 print(f"Video {video_filename} redimensionado y subido a S3 como {resized_s3_key}.")
                 
                 # Registrar el video original como redimensionado
                 log_resized_video(video_filename)
             except Exception as e:
-                print(f"Error al subir el video redimensionado {resized_filename} a S3: {e}")
+                print(f"Error al subir el video redimensionado {video_filename} a S3: {e}")
         else:
             print(f"El video {video_filename} no pudo ser redimensionado.")
         
