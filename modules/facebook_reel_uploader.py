@@ -26,13 +26,7 @@ class FacebookReelsUploader:
                     return False
                 
                 # Redimensionar el video a 1080x1920 o usar letterbox si es necesario
-                if video.h / video.w >= 1920 / 1080:
-                    print('entro al if')
-                    video_resized = resize(video, height=1920)
-                else:
-                    print('no entro al if')
-                    video_resized = resize(video, width=1080)
-                
+                video_resized = resize(video,(1080,1920))
                 
                 # Guardar el video redimensionado
                 video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
