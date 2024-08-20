@@ -6,6 +6,7 @@ from moviepy.video.fx.all import resize
 from config import Config
 
 s3 = boto3.client('s3')
+LOG_FILE = 'resized_videos.log'
 
 def download_from_s3(s3_key, local_path):
     s3.download_file(Config.S3_BUCKET_NAME, s3_key, local_path)
@@ -36,12 +37,29 @@ def resize_video(input_path, output_path):
         print(f"Error al redimensionar el video: {input_path}. Detalles del error: {e}")
         return False
 
+def log_resized_video(video_filename):
+    with open(LOG_FILE, 'a') as log:
+        log.write(video_filename + '\n')
+
+def get_resized_videos():
+    if not os.path.exists(LOG_FILE):
+        return set()
+    with open(LOG_FILE, 'r') as log:
+        return set(log.read().splitlines())
+
 def process_and_upload_videos_from_s3(s3_folder='segments', output_folder='/tmp'):
+    resized_videos = get_resized_videos()
     s3_objects = s3.list_objects_v2(Bucket=Config.S3_BUCKET_NAME, Prefix=s3_folder).get('Contents', [])
     video_files = [obj['Key'] for obj in s3_objects if obj['Key'].endswith('.mp4')]
     
     for s3_key in video_files:
         video_filename = os.path.basename(s3_key)
+        
+        # Verificar si el video ya ha sido redimensionado
+        if video_filename in resized_videos:
+            print(f"El video {video_filename} ya ha sido redimensionado anteriormente. Saltando...")
+            continue
+        
         local_path = os.path.join(output_folder, video_filename)
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         resized_filename = f"redimensionado-{timestamp}-{video_filename}"
@@ -56,6 +74,9 @@ def process_and_upload_videos_from_s3(s3_folder='segments', output_folder='/tmp'
             # Subir el video redimensionado a S3
             upload_to_s3(resized_path, resized_s3_key)
             print(f"Video {video_filename} redimensionado y subido a S3 como {resized_s3_key}.")
+            
+            # Registrar el video como redimensionado
+            log_resized_video(video_filename)
         else:
             print(f"El video {video_filename} no pudo ser redimensionado.")
         
