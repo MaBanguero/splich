@@ -2,6 +2,7 @@ import os
 import boto3
 from moviepy.editor import VideoFileClip
 from config import Config
+from moviepy.video.fx.all import resize
 
 s3 = boto3.client('s3')
 LOG_FILE = 'resized_videos.log'
@@ -19,9 +20,14 @@ def resize_video(input_path, output_path):
                 print(f"Error: El ancho del video original ({video.w}px) es menor que el mínimo requerido (540px).")
                 return False
             
-            # Redimensionar el video a 1080x1920, conservando la relación de aspecto
-            video_resized = video.resize(height=1920)  # Redimensiona la altura a 1920p
-            video_resized = video_resized.crop(width=1080, height=1920, x_center=video_resized.w/2, y_center=video_resized.h/2)
+            # Redimensionar el video a 1080x1920 o usar letterbox si es necesario
+            if video.h / video.w >= 1920 / 1080:
+                video_resized = resize(video, height=1920)
+            else:
+                video_resized = resize(video, width=1080)
+            
+            # Aplicar letterbox si es necesario para mantener la proporción 9:16
+            video_resized = video_resized.resize((1080, 1920))
             
             # Guardar el video redimensionado
             video_resized.write_videofile(output_path, codec='libx264', audio_codec='aac')
