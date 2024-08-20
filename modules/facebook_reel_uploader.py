@@ -55,14 +55,21 @@ class FacebookReelsUploader:
             return None
 
     def log_uploaded_video(self, video_filename):
-        with open(self.log_file, 'a') as log:
-            log.write(video_filename + '\n')
+        try:
+            with open(self.log_file, 'a') as log:
+                log.write(video_filename + '\n')
+        except IOError as e:
+            print(f"Error al escribir en el archivo de log: {e}")
 
     def get_uploaded_videos(self):
         if not os.path.exists(self.log_file):
             return set()
-        with open(self.log_file, 'r') as log:
-            return set(log.read().splitlines())
+        try:
+            with open(self.log_file, 'r') as log:
+                return set(log.read().splitlines())
+        except IOError as e:
+            print(f"Error al leer el archivo de log: {e}")
+            return set()
 
     def upload_videos(self, title, description, video_folder='/tmp', batch_size=5):
         all_files = [f for f in os.listdir(video_folder) if f.startswith('redimensionado-') and f.endswith('.mp4')]
@@ -79,6 +86,11 @@ class FacebookReelsUploader:
 
             for video_filename in batch_videos:
                 video_path = os.path.join(video_folder, video_filename)
+
+                # Verificación de existencia del archivo antes de intentar subirlo
+                if not os.path.exists(video_path):
+                    print(f"Error: el archivo {video_filename} no existe en la ruta {video_path}. Saltando...")
+                    continue
                 
                 video_id, upload_url = self.start_upload(access_token)
                 if video_id and upload_url:
@@ -87,15 +99,18 @@ class FacebookReelsUploader:
                         if self.finalize_upload(video_id, title, description, access_token):
                             print(f"Reel {video_filename} subido y publicado con éxito.")
                             self.log_uploaded_video(video_filename)
+                            
+                            # Opción para eliminar el archivo local después de la subida
+                            try:
+                                os.remove(video_path)
+                            except OSError as e:
+                                print(f"Error al eliminar el archivo {video_filename}: {e}")
                         else:
                             print(f"Error al finalizar la publicación del Reel {video_filename}.")
                     else:
                         print(f"Error al subir el video {video_filename}.")
                 else:
                     print(f"No se pudo iniciar la subida para {video_filename}.")
-                
-                # Opción de eliminar el archivo local después de la subida
-                # os.remove(video_path)
 
     def start_uploading_in_background(self, title, description, video_folder='/tmp', batch_size=5):
         thread = threading.Thread(target=self.upload_videos, args=(title, description, video_folder, batch_size))
