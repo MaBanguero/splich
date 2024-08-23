@@ -32,16 +32,23 @@ def repeat_audio_to_fit_video(audio_clip, video_duration):
         return AudioFileClip(audio_clip.filename)
 
 def load_processed_fragments():
+    processed_fragments = {}
     if not os.path.exists(FRAGMENT_LOG_FILE):
-        return {}
+        return processed_fragments
     with open(FRAGMENT_LOG_FILE, 'r') as log_file:
-        return {
-            line.split(',')[0]: {
-                'last_fragment': int(line.split(',')[1].strip()),
-                'complete': line.split(',')[2].strip() == 'complete'
+        for line in log_file:
+            parts = line.strip().split(',')
+            if len(parts) < 3:
+                print(f"Línea malformada en el archivo de log: {line}")
+                continue
+            video_filename = parts[0]
+            last_fragment = int(parts[1])
+            complete = parts[2].strip() == 'complete'
+            processed_fragments[video_filename] = {
+                'last_fragment': last_fragment,
+                'complete': complete
             }
-            for line in log_file
-        }
+    return processed_fragments
 
 def save_processed_fragment(video_filename, fragment_index, complete=False):
     with open(FRAGMENT_LOG_FILE, 'a') as log_file:
