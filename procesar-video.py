@@ -81,9 +81,19 @@ def process_video_and_audio():
         local_video_path = os.path.join(LOCAL_FOLDER, video_filename)
         local_audio_path = os.path.join(LOCAL_FOLDER, audio_filename)
 
-        # Descargar video y audio desde S3
-        download_from_s3(video_s3_key, local_video_path)
-        download_from_s3(audio_s3_key, local_audio_path)
+        # Verificar si el video ya existe en /tmp para evitar la descarga desde S3
+        if not os.path.exists(local_video_path):
+            print(f"Descargando {video_filename} desde S3...")
+            download_from_s3(video_s3_key, local_video_path)
+        else:
+            print(f"El video {video_filename} ya existe en {LOCAL_FOLDER}, omitiendo la descarga desde S3.")
+
+        # Verificar si el audio ya existe en /tmp para evitar la descarga desde S3
+        if not os.path.exists(local_audio_path):
+            print(f"Descargando {audio_filename} desde S3...")
+            download_from_s3(audio_s3_key, local_audio_path)
+        else:
+            print(f"El audio {audio_filename} ya existe en {LOCAL_FOLDER}, omitiendo la descarga desde S3.")
 
         # Obtener el último fragmento procesado si existe
         last_processed_fragment = processed_fragments.get(video_filename, {}).get('last_fragment', 0)
