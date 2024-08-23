@@ -1,12 +1,15 @@
 import os
 import requests
-import threading
+import boto3
 
 class FacebookReelsUploader:
-    def __init__(self, page_id, access_token, log_file='uploaded_reels.log'):
+    def __init__(self, page_id, access_token, log_file='uploaded_reels.log', bucket_name='facebook-videos-bucket', s3_folder='reel'):
         self.page_id = page_id
         self.access_token = access_token
         self.log_file = log_file
+        self.bucket_name = bucket_name
+        self.s3_folder = s3_folder
+        self.s3_client = boto3.client('s3')
 
     def start_upload(self):
         upload_start_url = f"https://graph.facebook.com/v20.0/{self.page_id}/video_reels"
@@ -72,20 +75,30 @@ class FacebookReelsUploader:
             print(f"Error al leer el archivo de log: {e}")
             return set()
 
-    def upload_videos(self, title, description, video_folder='/tmp', batch_size=5):
-        all_files = [f for f in os.listdir(video_folder) if f.startswith('redimensionado-') and f.endswith('.mp4')]
+    def download_videos_from_s3(self, local_folder='/tmp'):
+        s3_objects = self.s3_client.list_objects_v2(Bucket=self.bucket_name, Prefix=self.s3_folder).get('Contents', [])
+        video_files = [obj['Key'] for obj in s3_objects if obj['Key'].endswith('.mp4')]
         uploaded_videos = self.get_uploaded_videos()
-        video_files = [f for f in all_files if f not in uploaded_videos]
 
+        for s3_key in video_files:
+            video_filename = os.path.basename(s3_key)
+            if video_filename in uploaded_videos:
+                print(f"El video {video_filename} ya ha sido subido anteriormente. Saltando...")
+                continue
+
+            local_path = os.path.join(local_folder, video_filename)
+            self.s3_client.download_file(self.bucket_name, s3_key, local_path)
+            yield local_path, video_filename
+
+    def upload_videos(self, title, description, local_folder='/tmp', batch_size=5, max_videos=30):
+        video_generator = self.download_videos_from_s3(local_folder)
+        video_files = list(video_generator)[:max_videos]  # Limitar a un máximo de 30 videos
         total_videos = len(video_files)
-        
+
         for i in range(0, total_videos, batch_size):
-            batch_videos = video_files[i:i+batch_size]
+            batch_videos = video_files[i:i + batch_size]
 
-            for video_filename in batch_videos:
-                video_path = os.path.join(video_folder, video_filename)
-
-                # Verificación de existencia del archivo antes de intentar subirlo
+            for video_path, video_filename in batch_videos:
                 if not os.path.exists(video_path):
                     print(f"Error: el archivo {video_filename} no existe en la ruta {video_path}. Saltando...")
                     continue
@@ -109,8 +122,3 @@ class FacebookReelsUploader:
                         print(f"Error al subir el video {video_filename}.")
                 else:
                     print(f"No se pudo iniciar la subida para {video_filename}.")
-
-    def start_uploading_in_background(self, title, description, video_folder='/tmp', batch_size=5):
-        thread = threading.Thread(target=self.upload_videos, args=(title, description, video_folder, batch_size))
-        thread.start()
-        return thread
