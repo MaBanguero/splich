@@ -95,8 +95,13 @@ def process_video_and_audio():
         else:
             print(f"El audio {audio_filename} ya existe en {LOCAL_FOLDER}, omitiendo la descarga desde S3.")
 
-        # Obtener el último fragmento procesado si existe
+        print(f"Procesando video: {video_filename}")
+        print(f"Fragmentos procesados hasta ahora: {processed_fragments}")
+
         last_processed_fragment = processed_fragments.get(video_filename, {}).get('last_fragment', 0)
+        
+        # Debugging information
+        print(f"Último fragmento procesado para {video_filename}: {last_processed_fragment}")
 
         # Procesar video en fragmentos más pequeños
         video_clip = VideoFileClip(local_video_path)
