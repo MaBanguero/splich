@@ -2,7 +2,6 @@ import os
 import random
 import boto3
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
-from pydub import AudioSegment
 
 s3 = boto3.client('s3')
 BUCKET_NAME = 'facebook-videos-bucket'
@@ -21,19 +20,6 @@ def download_from_s3(s3_key, local_path):
 def upload_to_s3(local_path, s3_key):
     s3.upload_file(local_path, BUCKET_NAME, s3_key)
     print(f"Uploaded {local_path} to {s3_key}")
-
-def repeat_audio_to_fit_video(audio_clip, video_duration):
-    audio_duration = audio_clip.duration
-    if audio_duration >= video_duration:
-        return audio_clip.subclip(0, video_duration)
-    else:
-        # Repetir el audio usando pydub hasta que sea igual o mayor que la duración del video
-        audio = AudioSegment.from_file(audio_clip.filename)
-        repetitions = int(video_duration // audio_duration) + 1
-        extended_audio = audio * repetitions
-        extended_audio = extended_audio[:int(video_duration * 1000)]  # Cortar al tamaño exacto
-        extended_audio.export(audio_clip.filename, format="wav")
-        return AudioFileClip(audio_clip.filename)
 
 def load_processed_fragments():
     processed_fragments = {}
@@ -122,10 +108,6 @@ def process_video_and_audio():
         audio_clip = AudioFileClip(local_audio_path)
         music_clip = AudioFileClip(local_music_path).volumex(0.25)  # Reducir volumen de música al 25%
 
-        # Ajustar la música para que cubra toda la duración del video
-        total_duration = video_clip.duration
-        extended_music_clip = repeat_audio_to_fit_video(music_clip, total_duration)
-
         # Dividir y procesar video en fragmentos de 90 segundos
         start_time = last_processed_fragment * FRAGMENT_DURATION
         fragment_index = last_processed_fragment + 1
@@ -133,8 +115,8 @@ def process_video_and_audio():
         while start_time < video_clip.duration:
             end_time = min(start_time + FRAGMENT_DURATION, video_clip.duration)
             video_fragment = video_clip.subclip(start_time, end_time)
-            voice_fragment = repeat_audio_to_fit_video(audio_clip.subclip(start_time, end_time), video_fragment.duration)
-            music_fragment = extended_music_clip.subclip(start_time, end_time)  # Mantener la continuidad de la música
+            voice_fragment = audio_clip.subclip(start_time, end_time)
+            music_fragment = music_clip.subclip(0, min(90, video_fragment.duration))  # Música desde el segundo 0
 
             # Combine voice and background music
             combined_audio = CompositeAudioClip([voice_fragment, music_fragment])
