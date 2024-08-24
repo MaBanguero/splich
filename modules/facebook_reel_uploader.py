@@ -17,6 +17,7 @@ class FacebookReelsUploader:
             'upload_phase': 'start',
             'access_token': self.access_token
         }
+        print(data)
 
         try:
             response = requests.post(upload_start_url, data=data)
