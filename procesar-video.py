@@ -1,12 +1,14 @@
 import os
+import random
 import boto3
-from moviepy.editor import VideoFileClip, AudioFileClip
+from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
 from pydub import AudioSegment
 
 s3 = boto3.client('s3')
 BUCKET_NAME = 'facebook-videos-bucket'
 VIDEO_FOLDER = 'video-to-mix'
 AUDIO_FOLDER = 'voices'
+BACKGROUND_MUSIC_FOLDER = 'background-music'
 LOCAL_FOLDER = '/tmp'
 OUTPUT_FOLDER = 'reels'
 FRAGMENT_DURATION = 90  # Duración en segundos para cada fragmento
@@ -14,9 +16,11 @@ FRAGMENT_LOG_FILE = 'processed_fragments.log'  # Archivo para llevar el registro
 
 def download_from_s3(s3_key, local_path):
     s3.download_file(BUCKET_NAME, s3_key, local_path)
+    print(f"Downloaded {s3_key} to {local_path}")
 
 def upload_to_s3(local_path, s3_key):
     s3.upload_file(local_path, BUCKET_NAME, s3_key)
+    print(f"Uploaded {local_path} to {s3_key}")
 
 def repeat_audio_to_fit_video(audio_clip, video_duration):
     audio_duration = audio_clip.duration
@@ -58,12 +62,14 @@ def save_processed_fragment(video_filename, fragment_index, complete=False):
 def process_video_and_audio():
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
     s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
+    s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
 
     video_files = [obj['Key'] for obj in s3_video_objects if obj['Key'].endswith('.mp4')]
     audio_files = [obj['Key'] for obj in s3_audio_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
+    music_files = [obj['Key'] for obj in s3_music_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
 
-    if not video_files or not audio_files:
-        print("No se encontraron archivos de video o audio.")
+    if not video_files or not audio_files or not music_files:
+        print("No se encontraron archivos de video, audio o música de fondo.")
         return
 
     # Cargar fragmentos procesados previamente
@@ -72,7 +78,10 @@ def process_video_and_audio():
     for video_s3_key in video_files:
         video_filename = os.path.basename(video_s3_key)
         audio_s3_key = audio_files[0]  # Usar el primer archivo de audio para todos los videos
+        music_s3_key = music_files[0]  # Usar el primer archivo de música de fondo para todos los videos
+
         audio_filename = os.path.basename(audio_s3_key)
+        music_filename = os.path.basename(music_s3_key)
 
         if video_filename in processed_fragments and processed_fragments[video_filename]['complete']:
             print(f"El video {video_filename} ya ha sido procesado completamente. Saltando...")
@@ -80,6 +89,7 @@ def process_video_and_audio():
 
         local_video_path = os.path.join(LOCAL_FOLDER, video_filename)
         local_audio_path = os.path.join(LOCAL_FOLDER, audio_filename)
+        local_music_path = os.path.join(LOCAL_FOLDER, music_filename)
 
         # Verificar si el video ya existe en /tmp para evitar la descarga desde S3
         if not os.path.exists(local_video_path):
@@ -95,17 +105,22 @@ def process_video_and_audio():
         else:
             print(f"El audio {audio_filename} ya existe en {LOCAL_FOLDER}, omitiendo la descarga desde S3.")
 
+        # Verificar si la música de fondo ya existe en /tmp para evitar la descarga desde S3
+        if not os.path.exists(local_music_path):
+            print(f"Descargando {music_filename} desde S3...")
+            download_from_s3(music_s3_key, local_music_path)
+        else:
+            print(f"La música de fondo {music_filename} ya existe en {LOCAL_FOLDER}, omitiendo la descarga desde S3.")
+
         print(f"Procesando video: {video_filename}")
         print(f"Fragmentos procesados hasta ahora: {processed_fragments}")
 
         last_processed_fragment = processed_fragments.get(video_filename, {}).get('last_fragment', 0)
         
-        # Debugging information
-        print(f"Último fragmento procesado para {video_filename}: {last_processed_fragment}")
-
         # Procesar video en fragmentos más pequeños
         video_clip = VideoFileClip(local_video_path)
         audio_clip = AudioFileClip(local_audio_path)
+        music_clip = AudioFileClip(local_music_path).volumex(0.25)  # Reducir volumen de música al 25%
 
         # Dividir y procesar video en fragmentos de 90 segundos
         start_time = last_processed_fragment * FRAGMENT_DURATION
@@ -114,9 +129,14 @@ def process_video_and_audio():
         while start_time < video_clip.duration:
             end_time = min(start_time + FRAGMENT_DURATION, video_clip.duration)
             video_fragment = video_clip.subclip(start_time, end_time)
-            audio_fragment = repeat_audio_to_fit_video(audio_clip.subclip(start_time, end_time), video_fragment.duration)
+            voice_fragment = repeat_audio_to_fit_video(audio_clip.subclip(start_time, end_time), video_fragment.duration)
+            music_fragment = repeat_audio_to_fit_video(music_clip.subclip(start_time, end_time), video_fragment.duration)
 
-            final_video_fragment = video_fragment.set_audio(audio_fragment)
+            # Combine voice and background music
+            combined_audio = CompositeAudioClip([voice_fragment, music_fragment])
+
+            # Set the combined audio to the video fragment
+            final_video_fragment = video_fragment.set_audio(combined_audio)
 
             fragment_filename = f"fragment_{fragment_index}_{video_filename}"
             fragment_path = os.path.join(LOCAL_FOLDER, fragment_filename)
@@ -137,6 +157,7 @@ def process_video_and_audio():
         # Limpiar archivos locales
         os.remove(local_video_path)
         os.remove(local_audio_path)
+        os.remove(local_music_path)
 
 if __name__ == "__main__":
     process_video_and_audio()
