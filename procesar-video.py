@@ -122,6 +122,10 @@ def process_video_and_audio():
         audio_clip = AudioFileClip(local_audio_path)
         music_clip = AudioFileClip(local_music_path).volumex(0.25)  # Reducir volumen de música al 25%
 
+        # Ajustar la música para que cubra toda la duración del video
+        total_duration = video_clip.duration
+        extended_music_clip = repeat_audio_to_fit_video(music_clip, total_duration)
+
         # Dividir y procesar video en fragmentos de 90 segundos
         start_time = last_processed_fragment * FRAGMENT_DURATION
         fragment_index = last_processed_fragment + 1
@@ -130,7 +134,7 @@ def process_video_and_audio():
             end_time = min(start_time + FRAGMENT_DURATION, video_clip.duration)
             video_fragment = video_clip.subclip(start_time, end_time)
             voice_fragment = repeat_audio_to_fit_video(audio_clip.subclip(start_time, end_time), video_fragment.duration)
-            music_fragment = repeat_audio_to_fit_video(music_clip.subclip(start_time, end_time), video_fragment.duration)
+            music_fragment = extended_music_clip.subclip(start_time, end_time)  # Mantener la continuidad de la música
 
             # Combine voice and background music
             combined_audio = CompositeAudioClip([voice_fragment, music_fragment])
