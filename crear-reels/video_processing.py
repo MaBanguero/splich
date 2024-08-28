@@ -1,11 +1,16 @@
 import os
 import random
 import uuid
+import logging
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
 from s3_utils import upload_to_s3, download_from_s3
-from subtitle_utils import add_subtitles, open_srt
+from subtitle_utils import add_subtitles,open_srt
 from transcription_utils import start_transcription_job, wait_for_job_completion, download_transcription, json_to_srt, get_bucket_region
 from botocore.exceptions import ClientError
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 LOCAL_FOLDER = '/tmp'
 OUTPUT_FOLDER = 'reels'
@@ -32,12 +37,14 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
 
     try:
         # Iniciar el trabajo de transcripción
-        start_transcription_job(bucket_name, media_file_uri, bucket_name)
+        logger.info(f"Iniciando trabajo de transcripción: {transcription_job_name}")
+        start_transcription_job(bucket_name, media_file_uri, transcription_job_name)
         
         # Esperar a que el trabajo de transcripción se complete
         transcript_uri = wait_for_job_completion(transcription_job_name, get_bucket_region(bucket_name))
+        logger.info(f"Trabajo de transcripción completado: {transcription_job_name}")
     except ClientError as e:
-        print(f"Error starting transcription job: {e}")
+        logger.error(f"Error starting transcription job: {e}")
         raise
 
     # Descargar la transcripción y generar el archivo SRT
