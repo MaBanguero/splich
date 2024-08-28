@@ -1,9 +1,11 @@
 import os
 import random
+import uuid
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
 from s3_utils import upload_to_s3, download_from_s3
 from subtitle_utils import add_subtitles, open_srt
 from transcription_utils import start_transcription_job, wait_for_job_completion, download_transcription, json_to_srt, get_bucket_region
+from botocore.exceptions import ClientError
 
 LOCAL_FOLDER = '/tmp'
 OUTPUT_FOLDER = 'reels'
@@ -25,10 +27,20 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     
     media_file_uri = f"s3://{bucket_name}/{audio_s3_key}"
 
-    # Procesar la transcripción del audio
-    transcription_job_name = f"transcription_{fragment_index}_{video_filename}"
-    start_transcription_job(bucket_name, media_file_uri, bucket_name)
-    transcript_uri = wait_for_job_completion(transcription_job_name, get_bucket_region(bucket_name))
+    # Generar un nombre único para el trabajo de transcripción
+    transcription_job_name = f"transcription_{uuid.uuid4().hex[:8]}_{fragment_index}_{video_filename}"
+
+    try:
+        # Iniciar el trabajo de transcripción
+        start_transcription_job(bucket_name, media_file_uri, bucket_name)
+        
+        # Esperar a que el trabajo de transcripción se complete
+        transcript_uri = wait_for_job_completion(transcription_job_name, get_bucket_region(bucket_name))
+    except ClientError as e:
+        print(f"Error starting transcription job: {e}")
+        raise
+
+    # Descargar la transcripción y generar el archivo SRT
     transcript_file = download_transcription(transcript_uri, bucket_name)
     srt_file = f"{os.path.splitext(video_filename)[0]}_{fragment_index}.srt"
     json_to_srt(transcript_file, srt_file)
