@@ -87,7 +87,7 @@ def main():
 
         while start_time < VideoFileClip(local_video_path).duration:
             # Procesar un solo reel (fragmento de 90 segundos)
-            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path)
+            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path, None)
 
             # Iniciar trabajo de transcripción para el fragmento
             fragment_uri = f"s3://{BUCKET_NAME}/{fragment_s3_key}"
@@ -97,7 +97,11 @@ def main():
             srt_file = f"{os.path.splitext(fragment_filename)[0]}.srt"
             json_to_srt(transcript_file, srt_file)
 
-            # Aquí puedes procesar el video con los subtítulos si es necesario
+            # Cargar los subtítulos
+            subtitles = open_srt(srt_file)
+
+            # Reprocesar el video con los subtítulos añadidos
+            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path, subtitles)
 
             # Guardar el progreso del fragmento procesado
             save_processed_fragment(video_filename, fragment_index)
@@ -109,6 +113,9 @@ def main():
         os.remove(local_video_path)
         os.remove(local_audio_path)
         os.remove(local_music_path)
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

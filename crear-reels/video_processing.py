@@ -1,12 +1,14 @@
 import os
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
+from pysrt import SubRipFile
 from s3_utils import upload_to_s3
+from subtitle_utils import add_subtitles_to_video
 
 LOCAL_FOLDER = '/tmp'
 OUTPUT_FOLDER = 'reels'
 FRAGMENT_DURATION = 90  # Duración de cada fragmento en segundos
 
-def process_single_reel(video_path, video_filename, start_time, fragment_index, audio_path, music_path):
+def process_single_reel(video_path, video_filename, start_time, fragment_index, audio_path, music_path, subtitles):
     video_clip = VideoFileClip(video_path)
     end_time = min(start_time + FRAGMENT_DURATION, video_clip.duration)
     video_fragment = video_clip.subclip(start_time, end_time)
@@ -20,6 +22,10 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
 
     # Añadir el audio combinado al fragmento de video
     video_fragment = video_fragment.set_audio(combined_audio)
+
+    # Añadir subtítulos al fragmento de video
+    if subtitles:
+        video_fragment = add_subtitles_to_video(video_fragment, subtitles)
 
     fragment_filename = f"reel_{fragment_index}_{video_filename}"
     fragment_path = os.path.join(LOCAL_FOLDER, fragment_filename)
