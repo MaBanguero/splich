@@ -3,6 +3,32 @@ import time
 import json
 import datetime
 import uuid
+import unicodedata
+
+def replace_special_characters(text):
+    """
+    Reemplaza caracteres especiales como ñ, á, é, í, ó, ú por sus equivalentes sin diacríticos.
+    """
+    replacements = {
+        'ñ': 'n',
+        'Ñ': 'N',
+        'á': 'a',
+        'Á': 'A',
+        'é': 'e',
+        'É': 'E',
+        'í': 'i',
+        'Í': 'I',
+        'ó': 'o',
+        'Ó': 'O',
+        'ú': 'u',
+        'Ú': 'U'
+    }
+    
+    for old_char, new_char in replacements.items():
+        text = text.replace(old_char, new_char)
+    
+    return text
+
 
 def get_bucket_region(bucket_name):
     s3 = boto3.client('s3')
@@ -58,9 +84,14 @@ def json_to_srt(json_file, srt_file):
             if 'start_time' in item:
                 start_time = float(item['start_time'])
                 end_time = float(item['end_time'])
+                text = item['alternatives'][0]['content']
+                
+                # Reemplazar caracteres especiales
+                text = replace_special_characters(text)
+                
                 f.write(f"{index}\n")
                 f.write(f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n")
-                f.write(f"{item['alternatives'][0]['content']}\n\n")
+                f.write(f"{text}\n\n")
                 index += 1
 
 def format_timestamp(seconds):
