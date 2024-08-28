@@ -4,7 +4,7 @@ import uuid
 import logging
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
 from s3_utils import upload_to_s3, download_from_s3
-from subtitle_utils import add_subtitles,open_srt
+from subtitle_utils import add_subtitles, open_srt
 from transcription_utils import start_transcription_job, wait_for_job_completion, download_transcription, json_to_srt, get_bucket_region
 from botocore.exceptions import ClientError
 
@@ -38,7 +38,12 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     try:
         # Iniciar el trabajo de transcripción
         logger.info(f"Iniciando trabajo de transcripción: {transcription_job_name}")
-        start_transcription_job(bucket_name, media_file_uri, transcription_job_name)
+        start_transcription_job(
+            transcription_job_name=transcription_job_name,
+            media_file_uri=media_file_uri,
+            output_bucket_name=bucket_name,  # Asegúrate de que este es un nombre de bucket válido
+            language_code='es-US'  # Modifica esto si es necesario
+        )
         
         # Esperar a que el trabajo de transcripción se complete
         transcript_uri = wait_for_job_completion(transcription_job_name, get_bucket_region(bucket_name))
