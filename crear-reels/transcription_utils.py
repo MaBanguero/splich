@@ -41,11 +41,11 @@ def generate_unique_job_name(base_name):
     unique_id = uuid.uuid4().hex[:8]  # Genera un UUID corto
     return f"{base_name}_{timestamp}_{unique_id}"
 
-def start_transcription_job(bucket_name, media_file_uri, output_bucket_name):
+def start_transcription_job(bucket_name,transcription_job_name, media_file_uri, output_bucket_name):
     region = get_bucket_region(bucket_name)
     transcribe = boto3.client('transcribe', region_name=region)
 
-    transcription_job_name = generate_unique_job_name("transcription")
+    
     transcribe.start_transcription_job(
         TranscriptionJobName=transcription_job_name,
         Media={'MediaFileUri': media_file_uri},
