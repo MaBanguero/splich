@@ -230,6 +230,8 @@ def main():
     download_from_s3(audio_s3_key, local_audio_path)
     download_from_s3(music_s3_key, local_music_path)
     
+    print(f"s3://{BUCKET_NAME}/{video_s3_key}")
+    
     # Start transcription job
     start_transcription_job(f"s3://{BUCKET_NAME}/{video_s3_key}")
     
