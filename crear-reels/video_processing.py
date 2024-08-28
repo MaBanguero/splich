@@ -39,7 +39,7 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
         # Iniciar el trabajo de transcripción
         logger.info(f"Iniciando trabajo de transcripción: {transcription_job_name}")
         start_transcription_job(
-            bucket_name==bucket_name,
+            bucket_name=bucket_name,
             media_file_uri=media_file_uri,
             output_bucket_name=bucket_name,  # Asegúrate de que este es un nombre de bucket válido
         )
