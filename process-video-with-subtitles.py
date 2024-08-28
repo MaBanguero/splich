@@ -25,6 +25,10 @@ transcription_job_name = 'YourJobName'
 language_code = 'es-US'  # Modify if needed
 
 def download_from_s3(s3_key, local_path):
+    # Ensure the local_path includes both the directory and the filename
+    if local_path.endswith('/'):
+        raise ValueError("local_path must be a complete file path, not a directory")
+
     local_dir = os.path.dirname(local_path)
     
     # Ensure the directory exists
@@ -34,6 +38,7 @@ def download_from_s3(s3_key, local_path):
     # Download the file from S3
     s3.download_file(BUCKET_NAME, s3_key, local_path)
     print(f"Downloaded {s3_key} to {local_path}")
+
 
 def start_transcription_job(media_file_uri):
     transcribe.start_transcription_job(
@@ -201,14 +206,32 @@ def upload_to_s3(local_path, s3_key):
     print(f"Uploaded {local_path} to {s3_key}")
 
 def main():
-    # Assume the first video file in the folder for demonstration
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
+    s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
+    s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
+
+    # Ensure there are objects in the lists
+    if not s3_video_objects or not s3_audio_objects or not s3_music_objects:
+        raise ValueError("No video, audio, or music files found in S3")
+
+    # Select the first video, audio, and music files (adjust this as needed)
     video_s3_key = s3_video_objects[0]['Key']
+    audio_s3_key = s3_audio_objects[0]['Key']
+    music_s3_key = s3_music_objects[0]['Key']
+
     video_filename = os.path.basename(video_s3_key)
-    
-    # Download the video
+    audio_filename = os.path.basename(audio_s3_key)
+    music_filename = os.path.basename(music_s3_key)
+
+    # Construct the local paths to include file names
     local_video_path = os.path.join(LOCAL_FOLDER, video_filename)
+    local_audio_path = os.path.join(LOCAL_FOLDER, audio_filename)
+    local_music_path = os.path.join(LOCAL_FOLDER, music_filename)
+
+    # Download the video, audio, and music files from S3
     download_from_s3(video_s3_key, local_video_path)
+    download_from_s3(audio_s3_key, local_audio_path)
+    download_from_s3(music_s3_key, local_music_path)
     
     # Start transcription job
     start_transcription_job(f"s3://{BUCKET_NAME}/{video_s3_key}")
@@ -222,10 +245,12 @@ def main():
     json_to_srt(transcript_file, srt_filename)
 
     # Process the video with subtitles
-    process_video(video_filename, 'audio.mp3', 'background_music.mp3', srt_filename)
+    process_video(video_filename, audio_filename, music_filename, srt_filename)
 
     # Cleanup local files
     os.remove(local_video_path)
+    os.remove(local_audio_path)
+    os.remove(local_music_path)
     os.remove(transcript_file)
     os.remove(srt_filename)
 
