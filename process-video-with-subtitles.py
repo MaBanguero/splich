@@ -25,19 +25,15 @@ transcription_job_name = 'YourJobName'
 language_code = 'es-US'  # Modify if needed
 
 def download_from_s3(s3_key, local_path):
-    # Ensure the local_path includes both the directory and the filename
-    if local_path.endswith('/'):
-        raise ValueError("local_path must be a complete file path, not a directory")
-
-    local_dir = os.path.dirname(local_path)
-    
     # Ensure the directory exists
+    local_dir = os.path.dirname(local_path)
     if not os.path.exists(local_dir):
         os.makedirs(local_dir)
 
     # Download the file from S3
     s3.download_file(BUCKET_NAME, s3_key, local_path)
     print(f"Downloaded {s3_key} to {local_path}")
+
 
 
 def start_transcription_job(media_file_uri):
@@ -209,10 +205,6 @@ def main():
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
     s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
-
-    # Ensure there are objects in the lists
-    if not s3_video_objects or not s3_audio_objects or not s3_music_objects:
-        raise ValueError("No video, audio, or music files found in S3")
 
     # Select the first video, audio, and music files (adjust this as needed)
     video_s3_key = s3_video_objects[0]['Key']
