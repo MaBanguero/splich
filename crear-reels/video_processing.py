@@ -2,7 +2,7 @@ import os
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
 from pysrt import SubRipFile
 from s3_utils import upload_to_s3
-from subtitle_utils import add_subtitles_to_video
+from subtitle_utils import add_subtitles
 
 LOCAL_FOLDER = '/tmp'
 OUTPUT_FOLDER = 'reels'
@@ -25,7 +25,7 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
 
     # Añadir subtítulos al fragmento de video
     if subtitles:
-        video_fragment = add_subtitles_to_video(video_fragment, subtitles)
+        video_fragment = add_subtitles(video_fragment, subtitles)
 
     fragment_filename = f"reel_{fragment_index}_{video_filename}"
     fragment_path = os.path.join(LOCAL_FOLDER, fragment_filename)
