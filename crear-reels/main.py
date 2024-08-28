@@ -85,7 +85,7 @@ def main():
 
         # Generar un nombre único y empezar el trabajo de transcripción
         media_file_uri = f"s3://{BUCKET_NAME}/{video_s3_key}"
-        output_bucket_name = f"{BUCKET_NAME}/transcript"
+        output_bucket_name = f"{BUCKET_NAME}"
 
         transcription_job_name = start_transcription_job(BUCKET_NAME, media_file_uri, output_bucket_name)
         transcript_uri = wait_for_job_completion(transcription_job_name, region)
