@@ -25,6 +25,13 @@ transcription_job_name = 'YourJobName'
 language_code = 'es-US'  # Modify if needed
 
 def download_from_s3(s3_key, local_path):
+    local_dir = os.path.dirname(local_path)
+    
+    # Ensure the directory exists
+    if not os.path.exists(local_dir):
+        os.makedirs(local_dir)
+
+    # Download the file from S3
     s3.download_file(BUCKET_NAME, s3_key, local_path)
     print(f"Downloaded {s3_key} to {local_path}")
 
