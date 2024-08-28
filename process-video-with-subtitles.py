@@ -211,10 +211,18 @@ def main():
     s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
 
-    # Select the first video, audio, and music files (adjust this as needed)
+    # Ensure there are objects in the lists
+    if not s3_video_objects or not s3_audio_objects or not s3_music_objects:
+        raise ValueError("No video, audio, or music files found in S3")
+
+    # Select the first video, audio, and music files
     video_s3_key = s3_video_objects[0]['Key']
     audio_s3_key = s3_audio_objects[0]['Key']
     music_s3_key = s3_music_objects[0]['Key']
+
+    print(f"Video S3 Key: {video_s3_key}")
+    print(f"Audio S3 Key: {audio_s3_key}")
+    print(f"Music S3 Key: {music_s3_key}")
 
     video_filename = os.path.basename(video_s3_key)
     audio_filename = os.path.basename(audio_s3_key)
@@ -230,10 +238,12 @@ def main():
     download_from_s3(audio_s3_key, local_audio_path)
     download_from_s3(music_s3_key, local_music_path)
     
-    print(f"s3://{BUCKET_NAME}/{video_s3_key}")
-    
+    # Build the media file URI
+    media_uri = f"s3://{BUCKET_NAME}/{video_s3_key}"
+    print(f"Media File URI: {media_uri}")
+
     # Start transcription job
-    start_transcription_job(f"s3://{BUCKET_NAME}/{video_s3_key}")
+    start_transcription_job(media_uri)
     
     # Wait for transcription job to complete and download transcription
     transcript_uri = wait_for_job_completion()
