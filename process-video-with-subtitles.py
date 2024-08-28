@@ -4,6 +4,7 @@ import json
 import datetime
 import boto3
 import cv2
+import uuid
 import moviepy.editor as mp
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from pysrt import open as open_srt
@@ -42,13 +43,20 @@ def download_from_s3(s3_key, local_path):
 
 
 def start_transcription_job(media_file_uri):
-    transcribe.start_transcription_job(
-        TranscriptionJobName=transcription_job_name,
-        Media={'MediaFileUri': media_file_uri},
-        MediaFormat='mp4',
-        LanguageCode=language_code,
-        OutputBucketName=BUCKET_NAME
-    )
+    unique_job_name = f"{transcription_job_name}_{uuid.uuid4()}"
+    try:
+        response = transcribe.start_transcription_job(
+            TranscriptionJobName=unique_job_name,
+            Media={'MediaFileUri': media_file_uri},
+            MediaFormat='mp4',
+            LanguageCode=language_code,
+            OutputBucketName=BUCKET_NAME
+        )
+        print(f"Started transcription job: {unique_job_name}")
+        return response
+    except Exception as e:
+        print(f"Error starting transcription job: {str(e)}")
+        raise
 
 def wait_for_job_completion():
     while True:
@@ -235,7 +243,6 @@ def main():
     s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
 
-    # Filter files by their extensions
     video_files = [obj['Key'] for obj in s3_video_objects if obj['Key'].endswith('.mp4')]
     audio_files = [obj['Key'] for obj in s3_audio_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
     music_files = [obj['Key'] for obj in s3_music_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
@@ -248,8 +255,8 @@ def main():
 
     for video_s3_key in video_files:
         video_filename = os.path.basename(video_s3_key)
-        audio_s3_key = audio_files[0]  # Use the first audio file for simplicity
-        music_s3_key = music_files[0]  # Use the first music file for simplicity
+        audio_s3_key = audio_files[0]
+        music_s3_key = music_files[0]
 
         audio_filename = os.path.basename(audio_s3_key)
         music_filename = os.path.basename(music_s3_key)
@@ -262,55 +269,43 @@ def main():
         local_audio_path = os.path.join(LOCAL_FOLDER, audio_filename)
         local_music_path = os.path.join(LOCAL_FOLDER, music_filename)
 
-        # Download the necessary files
         download_from_s3(video_s3_key, local_video_path)
         download_from_s3(audio_s3_key, local_audio_path)
         download_from_s3(music_s3_key, local_music_path)
 
-        # Process the video into fragments (reels)
         video_clip = VideoFileClip(local_video_path)
         fragment_index = 1
         for start_time in range(0, int(video_clip.duration), FRAGMENT_DURATION):
             end_time = min(start_time + FRAGMENT_DURATION, video_clip.duration)
             reel_fragment = video_clip.subclip(start_time, end_time)
             
-            # Create a unique filename for the fragment
             fragment_filename = f"reel_fragment_{fragment_index}_{video_filename}"
             fragment_path = os.path.join(LOCAL_FOLDER, fragment_filename)
 
-            # Save the reel fragment locally
             reel_fragment.write_videofile(fragment_path, codec='libx264', audio_codec='aac')
 
-            # Upload the reel fragment to S3
             reel_s3_key = f"{OUTPUT_FOLDER}/{fragment_filename}"
             upload_to_s3(fragment_path, reel_s3_key)
 
-            # Start transcription job on the smaller reel fragment
             reel_media_uri = f"s3://{BUCKET_NAME}/{reel_s3_key}"
             start_transcription_job(reel_media_uri)
 
-            # Wait for transcription job to complete and download transcription
             transcript_uri = wait_for_job_completion()
             transcript_file = download_transcription(transcript_uri)
 
-            # Convert JSON transcription to SRT
             srt_filename = os.path.join(LOCAL_FOLDER, f"{fragment_filename}.srt")
             json_to_srt(transcript_file, srt_filename)
 
-            # Add subtitles to the reel fragment
             process_video(fragment_filename, audio_filename, music_filename, srt_filename)
 
-            # Mark this fragment as processed
             save_processed_fragment(video_filename, fragment_index, complete=True)
 
-            # Cleanup
             os.remove(fragment_path)
             os.remove(transcript_file)
             os.remove(srt_filename)
 
             fragment_index += 1
 
-        # Cleanup local files for the original download
         os.remove(local_video_path)
         os.remove(local_audio_path)
         os.remove(local_music_path)
