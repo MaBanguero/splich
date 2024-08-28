@@ -207,6 +207,72 @@ def upload_to_s3(local_path, s3_key):
     print(f"Uploaded {local_path} to {s3_key}")
 
 def main():
+    # List all video, audio, and music files from the respective S3 folders
+    s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
+    s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
+    s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
+
+    # Process all videos
+    for video_object in s3_video_objects:
+        video_s3_key = video_object['Key']
+        
+        if video_s3_key == VIDEO_FOLDER:  # Skip the folder itself
+            continue
+
+        video_filename = os.path.basename(video_s3_key)
+        local_video_path = os.path.join(LOCAL_FOLDER, video_filename)
+        
+        # Download video file
+        download_from_s3(video_s3_key, local_video_path)
+
+        # Process all audio files for each video
+        for audio_object in s3_audio_objects:
+            audio_s3_key = audio_object['Key']
+            
+            if audio_s3_key == AUDIO_FOLDER:  # Skip the folder itself
+                continue
+
+            audio_filename = os.path.basename(audio_s3_key)
+            local_audio_path = os.path.join(LOCAL_FOLDER, audio_filename)
+            
+            # Download audio file
+            download_from_s3(audio_s3_key, local_audio_path)
+
+            # Process all music files for each video/audio pair
+            for music_object in s3_music_objects:
+                music_s3_key = music_object['Key']
+                
+                if music_s3_key == BACKGROUND_MUSIC_FOLDER:  # Skip the folder itself
+                    continue
+
+                music_filename = os.path.basename(music_s3_key)
+                local_music_path = os.path.join(LOCAL_FOLDER, music_filename)
+                
+                # Download music file
+                download_from_s3(music_s3_key, local_music_path)
+
+                # Start transcription job for the video
+                media_uri = f"s3://{BUCKET_NAME}/{video_s3_key}"
+                print(f"Media File URI: {media_uri}")
+                start_transcription_job(media_uri)
+
+                # Wait for transcription job to complete and download transcription
+                transcript_uri = wait_for_job_completion()
+                transcript_file = download_transcription(transcript_uri)
+
+                # Convert JSON transcription to SRT
+                srt_filename = os.path.join(LOCAL_FOLDER, 'output.srt')
+                json_to_srt(transcript_file, srt_filename)
+
+                # Process the video with subtitles
+                process_video(video_filename, audio_filename, music_filename, srt_filename)
+
+                # Cleanup local files
+                os.remove(local_video_path)
+                os.remove(local_audio_path)
+                os.remove(local_music_path)
+                os.remove(transcript_file)
+                os.remove(srt_filename)
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
     s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
