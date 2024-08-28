@@ -9,7 +9,7 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 from pysrt import open as open_srt
 
 # AWS clients
-transcribe = boto3.client('transcribe', region_name='us-west-2')
+transcribe = boto3.client('transcribe', region_name='us-east-2')
 s3 = boto3.client('s3')
 
 # Configuration
