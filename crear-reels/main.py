@@ -2,8 +2,8 @@ import os
 import boto3
 from s3_utils import download_from_s3, upload_to_s3
 from video_processing import process_single_reel
-from transcription_utils import get_bucket_region
 from pysrt import open as open_srt
+from transcription_utils import get_bucket_region
 from moviepy.editor import VideoFileClip
 
 s3 = boto3.client('s3')
@@ -44,17 +44,15 @@ def save_processed_fragment(video_filename, fragment_index, complete=False):
 
 def main():
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
-    s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
     s3_hooks_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=HOOKS_FOLDER).get('Contents', [])
 
     video_files = [obj['Key'] for obj in s3_video_objects if obj['Key'].endswith('.mp4')]
-    audio_files = [obj['Key'] for obj in s3_audio_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
     music_files = [obj['Key'] for obj in s3_music_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
     hooks_files = [obj['Key'] for obj in s3_hooks_objects if obj['Key'].endswith('.mp4')]
 
-    if not video_files or not audio_files or not music_files or not hooks_files:
-        print("Missing video, audio, music, or hook files.")
+    if not video_files or not music_files or not hooks_files:
+        print("Missing video, music, or hook files.")
         return
 
     processed_fragments = load_processed_fragments()
@@ -76,9 +74,6 @@ def main():
 
         if not os.path.exists(local_music_path):
             download_from_s3(music_s3_key, local_music_path)
-
-        # Obtener la región del bucket
-        region = get_bucket_region(BUCKET_NAME)
 
         start_time = processed_fragments.get(video_filename, {}).get('last_fragment', 0) * FRAGMENT_DURATION
         fragment_index = processed_fragments.get(video_filename, {}).get('last_fragment', 0) + 1
