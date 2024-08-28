@@ -33,7 +33,7 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     media_file_uri = f"s3://{bucket_name}/{audio_s3_key}"
 
     # Generar un nombre único para el trabajo de transcripción
-    transcription_job_name = f"transcription_{uuid.uuid4().hex[:8]}_{fragment_index}_{video_filename}"
+    transcription_job_name = f"transcription_{uuid.uuid4().hex[:8]}_{fragment_index}"
 
     try:
         # Iniciar el trabajo de transcripción
