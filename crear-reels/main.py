@@ -11,6 +11,7 @@ BUCKET_NAME = 'facebook-videos-bucket'
 VIDEO_FOLDER = 'video-to-mix'
 AUDIO_FOLDER = 'voices'
 BACKGROUND_MUSIC_FOLDER = 'background-music'
+HOOKS_FOLDER = 'hooks'
 LOCAL_FOLDER = '/tmp'
 OUTPUT_FOLDER = 'reels'
 FRAGMENT_LOG_FILE = 'processed_fragments.log'
@@ -44,13 +45,15 @@ def main():
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
     s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
+    s3_hooks_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=HOOKS_FOLDER).get('Contents', [])
 
     video_files = [obj['Key'] for obj in s3_video_objects if obj['Key'].endswith('.mp4')]
     audio_files = [obj['Key'] for obj in s3_audio_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
     music_files = [obj['Key'] for obj in s3_music_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
+    hooks_files = [obj['Key'] for obj in s3_hooks_objects if obj['Key'].endswith('.mp4')]
 
-    if not video_files or not audio_files or not music_files:
-        print("No video, audio, or background music files found.")
+    if not video_files or not audio_files or not music_files or not hooks_files:
+        print("Missing video, audio, music, or hook files.")
         return
 
     processed_fragments = load_processed_fragments()
@@ -87,7 +90,7 @@ def main():
 
         while start_time < VideoFileClip(local_video_path).duration:
             # Procesar un solo reel (fragmento de 90 segundos)
-            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path, None)
+            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path, None, hooks_files)
 
             # Iniciar trabajo de transcripción para el fragmento
             fragment_uri = f"s3://{BUCKET_NAME}/{fragment_s3_key}"
@@ -101,7 +104,7 @@ def main():
             subtitles = open_srt(srt_file)
 
             # Reprocesar el video con los subtítulos añadidos
-            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path, subtitles)
+            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path, subtitles, hooks_files)
 
             # Guardar el progreso del fragmento procesado
             save_processed_fragment(video_filename, fragment_index)
@@ -113,10 +116,6 @@ def main():
         os.remove(local_video_path)
         os.remove(local_audio_path)
         os.remove(local_music_path)
-
-if __name__ == "__main__":
-    main()
-
 
 if __name__ == "__main__":
     main()
