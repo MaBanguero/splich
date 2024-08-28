@@ -2,12 +2,11 @@ import os
 import boto3
 from s3_utils import download_from_s3, upload_to_s3
 from transcription_utils import start_transcription_job, wait_for_job_completion, download_transcription, json_to_srt, get_bucket_region
-from video_processing import process_video_fragment
+from video_processing import process_single_reel
 from pysrt import open as open_srt
-from moviepy.editor import VideoFileClip, AudioFileClip
+from moviepy.editor import VideoFileClip
 
 s3 = boto3.client('s3')
-
 BUCKET_NAME = 'facebook-videos-bucket'
 VIDEO_FOLDER = 'video-to-mix'
 AUDIO_FOLDER = 'voices'
@@ -42,7 +41,6 @@ def save_processed_fragment(video_filename, fragment_index, complete=False):
         log_file.write(f"{video_filename},{fragment_index},{status}\n")
 
 def main():
-    # Obtener la lista de videos, audios y música de fondo desde S3
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
     s3_audio_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
@@ -55,17 +53,11 @@ def main():
         print("No video, audio, or background music files found.")
         return
 
-    # Cargar los fragmentos procesados anteriormente
     processed_fragments = load_processed_fragments()
 
     for video_s3_key in video_files:
         video_filename = os.path.basename(video_s3_key)
-        audio_s3_key = audio_files[0]
-        music_s3_key = music_files[0]
-
         local_video_path = os.path.join(LOCAL_FOLDER, video_filename)
-        local_audio_path = os.path.join(LOCAL_FOLDER, os.path.basename(audio_s3_key))
-        local_music_path = os.path.join(LOCAL_FOLDER, os.path.basename(music_s3_key))
 
         if video_filename in processed_fragments and processed_fragments[video_filename]['complete']:
             print(f"Video {video_filename} already fully processed. Skipping...")
@@ -73,6 +65,13 @@ def main():
 
         if not os.path.exists(local_video_path):
             download_from_s3(video_s3_key, local_video_path)
+
+        # Descargar el primer archivo de audio y música
+        audio_s3_key = audio_files[0]
+        music_s3_key = music_files[0]
+
+        local_audio_path = os.path.join(LOCAL_FOLDER, os.path.basename(audio_s3_key))
+        local_music_path = os.path.join(LOCAL_FOLDER, os.path.basename(music_s3_key))
 
         if not os.path.exists(local_audio_path):
             download_from_s3(audio_s3_key, local_audio_path)
@@ -83,33 +82,24 @@ def main():
         # Obtener la región del bucket
         region = get_bucket_region(BUCKET_NAME)
 
-        # Generar un nombre único y empezar el trabajo de transcripción
-        media_file_uri = f"s3://{BUCKET_NAME}/{video_s3_key}"
-        output_bucket_name = f"{BUCKET_NAME}"
-
-        transcription_job_name = start_transcription_job(BUCKET_NAME, media_file_uri, output_bucket_name)
-        transcript_uri = wait_for_job_completion(transcription_job_name, region)
-        transcript_file = download_transcription(transcript_uri, output_bucket_name)
-        srt_file = f"{os.path.splitext(video_filename)[0]}.srt"
-        json_to_srt(transcript_file, srt_file)
-
-        # Cargar los subtítulos y preparar el video y el audio
-        subtitles = open_srt(srt_file)
-        video_clip = VideoFileClip(local_video_path)
-        audio_clip = AudioFileClip(local_audio_path)
-        music_clip = AudioFileClip(local_music_path).volumex(0.25)
-
         start_time = processed_fragments.get(video_filename, {}).get('last_fragment', 0) * FRAGMENT_DURATION
         fragment_index = processed_fragments.get(video_filename, {}).get('last_fragment', 0) + 1
 
-        while start_time < video_clip.duration:
-            fragment_path = process_video_fragment(
-                video_clip, audio_clip, music_clip, start_time, fragment_index, video_filename, subtitles
-            )
+        while start_time < VideoFileClip(local_video_path).duration:
+            # Procesar un solo reel (fragmento de 90 segundos)
+            fragment_filename, fragment_s3_key = process_single_reel(local_video_path, video_filename, start_time, fragment_index, local_audio_path, local_music_path)
 
-            upload_to_s3(fragment_path, f"{OUTPUT_FOLDER}/{os.path.basename(fragment_path)}")
-            os.remove(fragment_path)
+            # Iniciar trabajo de transcripción para el fragmento
+            fragment_uri = f"s3://{BUCKET_NAME}/{fragment_s3_key}"
+            transcription_job_name = start_transcription_job(BUCKET_NAME, fragment_uri, BUCKET_NAME)
+            transcript_uri = wait_for_job_completion(transcription_job_name, region)
+            transcript_file = download_transcription(transcript_uri, BUCKET_NAME)
+            srt_file = f"{os.path.splitext(fragment_filename)[0]}.srt"
+            json_to_srt(transcript_file, srt_file)
 
+            # Aquí puedes procesar el video con los subtítulos si es necesario
+
+            # Guardar el progreso del fragmento procesado
             save_processed_fragment(video_filename, fragment_index)
 
             start_time += FRAGMENT_DURATION
@@ -119,6 +109,7 @@ def main():
         os.remove(local_video_path)
         os.remove(local_audio_path)
         os.remove(local_music_path)
+
 
 if __name__ == "__main__":
     main()
