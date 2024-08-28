@@ -25,6 +25,11 @@ transcription_job_name = 'YourJobName'
 language_code = 'es-US'  # Modify if needed
 
 def download_from_s3(s3_key, local_path):
+    # Check if the file already exists
+    if os.path.exists(local_path):
+        print(f"File {local_path} already exists. Skipping download.")
+        return
+
     # Ensure the directory exists
     local_dir = os.path.dirname(local_path)
     if not os.path.exists(local_dir):
