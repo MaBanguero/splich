@@ -93,7 +93,7 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     voice_audio_s3_key = random.choice(voices)
     local_voice_path = os.path.join(LOCAL_FOLDER, os.path.basename(voice_audio_s3_key))
     download_from_s3(voice_audio_s3_key, local_voice_path)
-    voice_clip = AudioFileClip(local_voice_path).subclip(0, video_fragment.duration)
+    voice_clip = AudioFileClip(local_voice_path).subclip(0, video_fragment.duration).volumex(1)
 
     # Crear una versión del fragmento con voz y música de fondo
     fragment_audio = CompositeAudioClip([voice_clip, music_clip.subclip(0, video_fragment.duration)])
