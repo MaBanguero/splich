@@ -32,16 +32,18 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     voice_audio_s3_key = random.choice(voices)
     local_voice_path = os.path.join(LOCAL_FOLDER, os.path.basename(voice_audio_s3_key))
     download_from_s3(voice_audio_s3_key, local_voice_path)
-    voice_clip = AudioFileClip(local_voice_path).subclip(0, video_fragment.duration)
-
-    # Normalizar el audio de voz
+    
+    # Cargar el audio completo para asegurar que no se corta
+    voice_clip = AudioFileClip(local_voice_path)
     voice_clip = normalize_audio(voice_clip)
 
-    # Subir el archivo de voz a S3 para la transcripción
+    # Escribir el archivo de audio para transcripción
     audio_s3_key = f"{OUTPUT_FOLDER}/voice_fragment_{fragment_index}_{video_filename}.wav"
-    voice_clip.write_audiofile(local_voice_path)
-    upload_to_s3(local_voice_path, audio_s3_key)
+    complete_audio_path = os.path.join(LOCAL_FOLDER, f"complete_{audio_s3_key}.wav")
+    voice_clip.write_audiofile(complete_audio_path)
     
+    # Subir el archivo de audio a S3
+    upload_to_s3(complete_audio_path, audio_s3_key)
     media_file_uri = f"s3://{bucket_name}/{audio_s3_key}"
 
     # Generar un nombre único para el trabajo de transcripción
