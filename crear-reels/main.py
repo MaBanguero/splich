@@ -46,13 +46,15 @@ def main():
     s3_video_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=VIDEO_FOLDER).get('Contents', [])
     s3_music_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=BACKGROUND_MUSIC_FOLDER).get('Contents', [])
     s3_hooks_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=HOOKS_FOLDER).get('Contents', [])
+    s3_voices_objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=AUDIO_FOLDER).get('Contents', [])
 
     video_files = [obj['Key'] for obj in s3_video_objects if obj['Key'].endswith('.mp4')]
     music_files = [obj['Key'] for obj in s3_music_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
     hooks_files = [obj['Key'] for obj in s3_hooks_objects if obj['Key'].endswith('.mp4')]
+    voices_files = [obj['Key'] for obj in s3_voices_objects if obj['Key'].endswith('.mp3') or obj['Key'].endswith('.wav')]
 
-    if not video_files or not music_files or not hooks_files:
-        print("Missing video, music, or hook files.")
+    if not video_files or not music_files or not hooks_files or not voices_files:
+        print("Missing video, music, hook, or voice files.")
         return
 
     processed_fragments = load_processed_fragments()
@@ -87,6 +89,7 @@ def main():
                 fragment_index=fragment_index,
                 music_path=local_music_path,
                 hooks=hooks_files,
+                voices=voices_files,  # Se incluye el argumento 'voices'
                 bucket_name=BUCKET_NAME
             )
 
