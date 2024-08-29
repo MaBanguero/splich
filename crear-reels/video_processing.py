@@ -33,11 +33,11 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     local_voice_path = os.path.join(LOCAL_FOLDER, os.path.basename(voice_audio_s3_key))
     download_from_s3(voice_audio_s3_key, local_voice_path)
     
-    # Cargar el audio completo para asegurar que no se corta
-    voice_clip = AudioFileClip(local_voice_path)
+    # Cargar el audio completo y tomar solo el fragmento correspondiente al video
+    voice_clip = AudioFileClip(local_voice_path).subclip(start_time, end_time)
     voice_clip = normalize_audio(voice_clip)
 
-    # Asegurarse de que el nombre del archivo de salida sea correcto y evitar doble extensión
+    # Asegurarse de que el nombre del archivo de salida sea correcto
     audio_s3_key = f"voice_fragment_{fragment_index}_{video_filename}.wav"
     complete_audio_path = os.path.join(LOCAL_FOLDER, audio_s3_key)
 
@@ -97,10 +97,10 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
 
     # Añadir música de fondo al "hook" sin reemplazar la voz
     hook_audio = hook_clip.audio
-    music_clip = AudioFileClip(music_path).volumex(0.25)  # Ajustar el volumen de la música de fondo
+    music_clip = AudioFileClip(music_path).subclip(0, hook_clip.duration).volumex(0.25)
 
     # Crear una versión del hook con música de fondo
-    combined_hook_audio = CompositeAudioClip([hook_audio, music_clip.subclip(0, hook_clip.duration)])
+    combined_hook_audio = CompositeAudioClip([hook_audio, music_clip])
     hook_clip = hook_clip.set_audio(combined_hook_audio)
 
     # Crear una versión del fragmento con voz y música de fondo
