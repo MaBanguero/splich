@@ -37,11 +37,17 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     voice_clip = AudioFileClip(local_voice_path)
     voice_clip = normalize_audio(voice_clip)
 
-    # Escribir el archivo de audio para transcripción
+    # Asegurarse de que el nombre del archivo de salida sea correcto
     audio_s3_key = f"{OUTPUT_FOLDER}/voice_fragment_{fragment_index}_{video_filename}.wav"
-    complete_audio_path = os.path.join(LOCAL_FOLDER, f"complete_{audio_s3_key}.wav")
-    voice_clip.write_audiofile(complete_audio_path)
-    
+    complete_audio_path = os.path.join(LOCAL_FOLDER, f"complete_{audio_s3_key}")
+
+    # Escribir el archivo de audio para transcripción
+    try:
+        voice_clip.write_audiofile(complete_audio_path)
+    except OSError as e:
+        logger.error(f"Error writing audio file: {e}")
+        return
+
     # Subir el archivo de audio a S3
     upload_to_s3(complete_audio_path, audio_s3_key)
     media_file_uri = f"s3://{bucket_name}/{audio_s3_key}"
