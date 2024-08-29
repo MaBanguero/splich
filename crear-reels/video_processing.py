@@ -24,9 +24,13 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     end_time = min(start_time + FRAGMENT_DURATION, video_clip.duration)
     video_fragment = video_clip.subclip(start_time, end_time)
 
-    # Extraer el audio del fragmento de video
+    # Extraer el audio del fragmento de video y ajustar el volumen
     audio_fragment_path = os.path.join(LOCAL_FOLDER, f"fragment_{fragment_index}_{video_filename}.wav")
-    video_fragment.audio.write_audiofile(audio_fragment_path)
+    video_fragment.audio.write_audiofile(audio_fragment_path, fps=44100, nbytes=2, buffersize=2000, codec="pcm_s16le")
+    
+    # Ajustar volumen del archivo de audio si es necesario
+    audio_clip = AudioFileClip(audio_fragment_path).volumex(1.0)  # Ajusta el volumen a 100%
+    audio_clip.write_audiofile(audio_fragment_path)
 
     # Subir el fragmento de audio a S3 para la transcripción
     audio_s3_key = f"{OUTPUT_FOLDER}/audio_fragment_{fragment_index}_{video_filename}.wav"
