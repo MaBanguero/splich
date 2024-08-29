@@ -24,17 +24,19 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     end_time = min(start_time + FRAGMENT_DURATION, video_clip.duration)
     video_fragment = video_clip.subclip(start_time, end_time)
 
-    # Extraer el audio del fragmento de video y ajustar el volumen
-    audio_fragment_path = os.path.join(LOCAL_FOLDER, f"fragment_{fragment_index}_{video_filename}.wav")
-    video_fragment.audio.write_audiofile(audio_fragment_path, fps=44100, nbytes=2, buffersize=2000, codec="pcm_s16le")
-    
-    # Ajustar volumen del archivo de audio si es necesario
-    audio_clip = AudioFileClip(audio_fragment_path).volumex(1.0)  # Ajusta el volumen a 100%
-    audio_clip.write_audiofile(audio_fragment_path)
+    # Seleccionar y descargar el archivo de voz desde la carpeta de voces
+    voice_audio_s3_key = random.choice(voices)
+    local_voice_path = os.path.join(LOCAL_FOLDER, os.path.basename(voice_audio_s3_key))
+    download_from_s3(voice_audio_s3_key, local_voice_path)
+    voice_clip = AudioFileClip(local_voice_path).subclip(0, video_fragment.duration)
 
-    # Subir el fragmento de audio a S3 para la transcripción
-    audio_s3_key = f"{OUTPUT_FOLDER}/audio_fragment_{fragment_index}_{video_filename}.wav"
-    upload_to_s3(audio_fragment_path, audio_s3_key)
+    # Ajustar volumen del archivo de voz si es necesario
+    voice_clip = voice_clip.volumex(1.0)  # Ajusta el volumen a 100%
+    
+    # Subir el archivo de voz a S3 para la transcripción
+    audio_s3_key = f"{OUTPUT_FOLDER}/voice_fragment_{fragment_index}_{video_filename}.wav"
+    voice_clip.write_audiofile(local_voice_path)
+    upload_to_s3(local_voice_path, audio_s3_key)
     
     media_file_uri = f"s3://{bucket_name}/{audio_s3_key}"
 
@@ -89,12 +91,6 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     combined_hook_audio = CompositeAudioClip([hook_audio, music_clip.subclip(0, hook_clip.duration)])
     hook_clip = hook_clip.set_audio(combined_hook_audio)
 
-    # Seleccionar y descargar el archivo de voz desde la carpeta de voces
-    voice_audio_s3_key = random.choice(voices)
-    local_voice_path = os.path.join(LOCAL_FOLDER, os.path.basename(voice_audio_s3_key))
-    download_from_s3(voice_audio_s3_key, local_voice_path)
-    voice_clip = AudioFileClip(local_voice_path).subclip(0, video_fragment.duration).volumex(1)
-
     # Crear una versión del fragmento con voz y música de fondo
     fragment_audio = CompositeAudioClip([voice_clip, music_clip.subclip(0, video_fragment.duration)])
     video_fragment = video_fragment.set_audio(fragment_audio)
@@ -115,7 +111,6 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     os.remove(fragment_path)
     os.remove(local_hook_path)
     os.remove(srt_file)
-    os.remove(audio_fragment_path)
     os.remove(local_voice_path)
 
     return fragment_filename, reel_s3_key
