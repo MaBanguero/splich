@@ -17,11 +17,29 @@ LOCAL_FOLDER = '/tmp'
 OUTPUT_FOLDER = 'reels'
 HOOKS_FOLDER = 'hooks'
 VOICES_FOLDER = 'voices'
-FRAGMENT_DURATION = 90  # Duración de cada fragmento en segundos
+FRAGMENT_DURATION = 83  # Duración de cada fragmento en segundos
 
 def normalize_audio(audio_clip):
     """Normaliza el volumen del clip de audio."""
     return audio_clip.volumex(1.0)  # Ajusta el volumen a 100%
+
+def get_voice_clip(voices, local_voice_path, voice_audio_s3_key, start_time, fragment_duration):
+    """Obtiene un fragmento de voz que coincide con la duración del video."""
+    download_from_s3(voice_audio_s3_key, local_voice_path)
+    voice_clip = AudioFileClip(local_voice_path)
+    
+    # Si el start_time excede la duración, reiniciar los tiempos
+    if start_time >= voice_clip.duration:
+        logger.warning(f"El tiempo de inicio {start_time} excede la duración del audio {voice_clip.duration}. Tomando otro archivo de voz.")
+        start_time = 0
+        end_time = min(fragment_duration, voice_clip.duration)
+    else:
+        end_time = min(start_time + fragment_duration, voice_clip.duration)
+
+    voice_clip = voice_clip.subclip(start_time, end_time)
+    voice_clip = normalize_audio(voice_clip)
+
+    return voice_clip, start_time, end_time
 
 def process_single_reel(video_path, video_filename, start_time, fragment_index, music_path, hooks, voices, bucket_name):
     video_clip = VideoFileClip(video_path)
@@ -31,11 +49,8 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     # Seleccionar y descargar un archivo de voz desde la carpeta de voces
     voice_audio_s3_key = random.choice(voices)
     local_voice_path = os.path.join(LOCAL_FOLDER, os.path.basename(voice_audio_s3_key))
-    download_from_s3(voice_audio_s3_key, local_voice_path)
     
-    # Cargar el audio completo y tomar solo el fragmento correspondiente al video
-    voice_clip = AudioFileClip(local_voice_path).subclip(start_time, end_time)
-    voice_clip = normalize_audio(voice_clip)
+    voice_clip, voice_start_time, voice_end_time = get_voice_clip(voices, local_voice_path, voice_audio_s3_key, start_time, FRAGMENT_DURATION)
 
     # Asegurarse de que el nombre del archivo de salida sea correcto
     audio_s3_key = f"voice_fragment_{fragment_index}_{video_filename}.wav"
