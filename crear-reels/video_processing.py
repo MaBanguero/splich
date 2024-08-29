@@ -25,9 +25,17 @@ def normalize_audio(audio_clip):
 
 def preprocess_audio_with_ffmpeg(input_path, output_path):
     """Procesa el archivo de audio con FFmpeg para asegurar la consistencia."""
-    subprocess.run([
-        "ffmpeg", "-y", "-i", input_path, "-acodec", "aac", "-b:a", "192k", output_path
-    ], check=True)
+    try:
+        subprocess.run([
+            "ffmpeg", "-y", "-i", input_path, 
+            "-acodec", "aac",           # Usa el codec AAC
+            "-b:a", "192k",             # Ajusta el bitrate a 192 kbps
+            "-ac", "2",                 # Fuerza a 2 canales de audio (estéreo)
+            "-ar", "44100",             # Ajusta la frecuencia de muestreo a 44.1 kHz
+            output_path
+        ], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error durante el procesamiento del audio: {e}")
 
 def process_single_reel(video_path, video_filename, start_time, fragment_index, music_path, hooks, voices, bucket_name):
     video_clip = VideoFileClip(video_path)
