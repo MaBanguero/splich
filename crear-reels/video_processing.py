@@ -1,4 +1,4 @@
-import os, subprocess
+import os
 import random
 import uuid
 import logging
@@ -21,21 +21,7 @@ FRAGMENT_DURATION = 90  # Duración de cada fragmento en segundos
 
 def normalize_audio(audio_clip):
     """Normaliza el volumen del clip de audio."""
-    return audio_clip.volumex(1.0)
-
-def preprocess_audio_with_ffmpeg(input_path, output_path):
-    """Procesa el archivo de audio con FFmpeg para asegurar la consistencia."""
-    try:
-        subprocess.run([
-            "ffmpeg", "-y", "-i", input_path, 
-            "-acodec", "aac",           # Usa el codec AAC
-            "-b:a", "192k",             # Ajusta el bitrate a 192 kbps
-            "-ac", "2",                 # Fuerza a 2 canales de audio (estéreo)
-            "-ar", "44100",             # Ajusta la frecuencia de muestreo a 44.1 kHz
-            output_path
-        ], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error durante el procesamiento del audio: {e}")
+    return audio_clip.volumex(1.0)  # Ajusta el volumen a 100%
 
 def process_single_reel(video_path, video_filename, start_time, fragment_index, music_path, hooks, voices, bucket_name):
     video_clip = VideoFileClip(video_path)
@@ -46,11 +32,9 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     voice_audio_s3_key = random.choice(voices)
     local_voice_path = os.path.join(LOCAL_FOLDER, os.path.basename(voice_audio_s3_key))
     download_from_s3(voice_audio_s3_key, local_voice_path)
+    voice_clip = AudioFileClip(local_voice_path).subclip(0, video_fragment.duration)
 
-    # Procesar y normalizar el audio de voz
-    preprocessed_voice_path = os.path.join(LOCAL_FOLDER, "processed_" + os.path.basename(local_voice_path))
-    preprocess_audio_with_ffmpeg(local_voice_path, preprocessed_voice_path)
-    voice_clip = AudioFileClip(preprocessed_voice_path).subclip(0, video_fragment.duration)
+    # Normalizar el audio de voz
     voice_clip = normalize_audio(voice_clip)
 
     # Subir el archivo de voz a S3 para la transcripción
@@ -101,11 +85,7 @@ def process_single_reel(video_path, video_filename, start_time, fragment_index, 
     hook_video_s3_key = random.choice(hooks)
     local_hook_path = os.path.join(LOCAL_FOLDER, os.path.basename(hook_video_s3_key))
     download_from_s3(hook_video_s3_key, local_hook_path)
-
-    # Reprocesar el video hook con FFmpeg para asegurar consistencia
-    preprocessed_hook_path = os.path.join(LOCAL_FOLDER, "preprocessed_" + os.path.basename(local_hook_path))
-    preprocess_audio_with_ffmpeg(local_hook_path, preprocessed_hook_path)
-    hook_clip = VideoFileClip(preprocessed_hook_path)
+    hook_clip = VideoFileClip(local_hook_path)
 
     # Añadir música de fondo al "hook" sin reemplazar la voz
     hook_audio = hook_clip.audio
