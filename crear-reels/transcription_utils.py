@@ -88,6 +88,7 @@ def json_to_srt(json_file, srt_file):
                 
                 # Reemplazar caracteres especiales
                 text = replace_special_characters(text)
+                print(text)
                 
                 f.write(f"{index}\n")
                 f.write(f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n")
