@@ -48,7 +48,7 @@ class FacebookVideoUploader:
 
         response = requests.post(url, params=params)
         response.raise_for_status()
-        upload_session_id = response.json().get('id')
+        upload_session_id = response.json().get('id').replace('upload:', '')
         logging.info(f'Sesión de subida iniciada para {file_name} con ID de sesión {upload_session_id}')
         return upload_session_id
 
