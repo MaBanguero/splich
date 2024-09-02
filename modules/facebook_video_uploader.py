@@ -78,8 +78,10 @@ class FacebookVideoUploader:
         }
 
         response = requests.post(url, files=files)
+        print(response.json())
         response.raise_for_status()
         result = response.json()
+        
         logging.info(f'Video publicado en Facebook con identificador: {result}')
         return result
 
