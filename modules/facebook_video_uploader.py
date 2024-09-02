@@ -92,8 +92,8 @@ class FacebookVideoUploader:
                 logging.info(f"Subiendo el video {video}...")
                 upload_session_id = self.initiate_upload_session(video)
                 uploaded_file_handle = self.upload_video(video, upload_session_id)
-                video_title = f"Video Subido: {video}"
-                video_description = f"Descripción del video: {video}"
+                video_title = f"Estoy seguro de que no sabias esto"
+                video_description = f"Estoy seguro de que no sabias esto #fyp #virals"
                 self.publish_video_to_facebook(video_title, video_description, uploaded_file_handle)
                 self.uploaded_videos.append({
                     'video_name': video,
