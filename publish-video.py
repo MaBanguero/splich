@@ -7,7 +7,7 @@ def main():
     user_access_token = 'user_acces_token'
 
     uploader = FacebookVideoUploader(app_id=app_id, page_id=page_id, page_access_token=page_access_token, user_access_token=user_access_token)
-    uploader.publish_videos(limit=5)
+    uploader.publish_videos(limit=1)
     print("Videos subidos:", uploader.get_uploaded_videos())
 
 if __name__ == "__main__":

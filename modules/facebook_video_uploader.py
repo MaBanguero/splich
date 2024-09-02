@@ -72,10 +72,10 @@ class FacebookVideoUploader:
         """Publica el video en Facebook usando el identificador de archivo subido."""
         url = f"https://graph-video.facebook.com/v20.0/{self.page_id}/videos"
         files = {
-            'access_token': (None, self.page_access_token),
-            'title': (None, video_title),
-            'description': (None, video_description),
-            'fbuploader_video_file_chunk': (None, uploaded_file_handle),
+            'access_token': self.page_access_token,
+            'title': video_title,
+            'description':  video_description,
+            'fbuploader_video_file_chunk': uploaded_file_handle,
         }
 
         response = requests.post(url, files=files)
@@ -96,8 +96,8 @@ class FacebookVideoUploader:
                 logging.info(f"Subiendo el video {video}...")
                 upload_session_id = self.initiate_upload_session(video)
                 uploaded_file_handle = self.upload_video(video, upload_session_id)
-                video_title = f"Estoy seguro de que no sabias esto"
-                video_description = f"Estoy seguro de que no sabias esto #fyp #virals"
+                video_title = "Estoy seguro de que no sabias esto"
+                video_description = "Estoy seguro de que no sabias esto #fyp #virals"
                 self.publish_video_to_facebook(video_title, video_description, uploaded_file_handle)
                 self.uploaded_videos.append({
                     'video_name': video,
