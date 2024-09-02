@@ -8,12 +8,13 @@ logging.basicConfig(filename='upload.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 class FacebookVideoUploader:
-    def __init__(self, app_id, page_id, page_access_token):
+    def __init__(self, app_id, page_id, page_access_token, user_access_token):
         self.s3_bucket = 'facebook-videos-bucket'
         self.s3_folder = 'reel'
         self.app_id = app_id
         self.page_id = page_id
         self.page_access_token = page_access_token
+        self.user_access_token = user_access_token
         self.uploaded_videos = []  # Lista para registrar los videos subidos
 
         # Inicia la sesión con S3
@@ -43,7 +44,7 @@ class FacebookVideoUploader:
             'file_name': file_name,
             'file_length': file_size,
             'file_type': file_type,
-            'access_token': self.page_access_token
+            'access_token': self.user_access_token
         }
 
         response = requests.post(url, params=params)
@@ -56,7 +57,7 @@ class FacebookVideoUploader:
         """Sube el video en una sesión ya iniciada."""
         url = f"https://graph.facebook.com/v20.0/upload:{upload_session_id}"
         headers = {
-            "Authorization": f"OAuth {self.page_access_token}",
+            "Authorization": f"OAuth {self.user_access_token}",
             "file_offset": "0"
         }
 
