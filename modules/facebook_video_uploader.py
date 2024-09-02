@@ -63,7 +63,6 @@ class FacebookVideoUploader:
 
         with open(file_name, 'rb') as file_data:
             response = requests.post(url, headers=headers, data=file_data)
-            print(f"\n\nupload video: {response.json()}")
             response.raise_for_status()
             uploaded_file_handle = response.json().get('h')  # Extraer 'h' de la respuesta
             logging.info(f'Video {file_name} subido con éxito. Handle de archivo subido: {uploaded_file_handle}')
@@ -80,6 +79,7 @@ class FacebookVideoUploader:
         }
 
         response = requests.post(url, files=files)
+        print(files)
         print(response.json())
         response.raise_for_status()
         result = response.json()
