@@ -11,10 +11,10 @@ class FacebookVideoUploader:
     def __init__(self, app_id, page_id, page_access_token, user_access_token):
         self.s3_bucket = 'facebook-videos-bucket'
         self.s3_folder = 'reel'
-        self.app_id = app_id
-        self.page_id = page_id
-        self.page_access_token = page_access_token
-        self.user_access_token = user_access_token
+        self.app_id = str(app_id)
+        self.page_id = str(page_id)
+        self.page_access_token = str(page_access_token)
+        self.user_access_token = str(user_access_token)
         self.uploaded_videos = []  # Lista para registrar los videos subidos
 
         # Inicia la sesión con S3
@@ -41,10 +41,10 @@ class FacebookVideoUploader:
 
         url = f"https://graph.facebook.com/v20.0/{self.app_id}/uploads"
         params = {
-            'file_name': file_name,
-            'file_length': file_size,
-            'file_type': file_type,
-            'access_token': self.user_access_token
+            'file_name': str(file_name),
+            'file_length': str(file_size),
+            'file_type': str(file_type),
+            'access_token': str(self.user_access_token)
         }
 
         response = requests.post(url, params=params)
@@ -57,7 +57,7 @@ class FacebookVideoUploader:
         """Sube el video en una sesión ya iniciada."""
         url = f"https://graph.facebook.com/v20.0/upload:{upload_session_id}"
         headers = {
-            "Authorization": f"OAuth {self.user_access_token}",
+            "Authorization": f"OAuth {str(self.user_access_token)}",
             "file_offset": "0"
         }
 
@@ -72,14 +72,14 @@ class FacebookVideoUploader:
         """Publica el video en Facebook usando el identificador de archivo subido."""
         url = f"https://graph-video.facebook.com/v20.0/{self.page_id}/videos"
         files = {
-            'access_token': self.page_access_token,
-            'title': video_title,
-            'description':  video_description,
-            'fbuploader_video_file_chunk': uploaded_file_handle,
+            'access_token': str(self.page_access_token),
+            'title': str(video_title),
+            'description': str(video_description),
+            'fbuploader_video_file_chunk': str(uploaded_file_handle),
         }
 
         response = requests.post(url, files=files)
-        print(files)
+        
         print(response.json())
         response.raise_for_status()
         result = response.json()
